@@ -1,0 +1,9 @@
+node_modules/
+dist/
+docgen/node_modules/
+docgen/*.docx
+docgen/*.pdf
+docgen/*.pptx
+docgen/images/
+*.log
+.DS_Store

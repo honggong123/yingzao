@@ -1,0 +1,22 @@
+{
+  "name": "yingzao",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "《营造》— 《营造法式》斗拱榫卯数字营造系统",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "three": "^0.169.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
+  }
+}

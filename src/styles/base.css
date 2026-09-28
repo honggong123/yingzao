@@ -1,0 +1,57 @@
+:root {
+  --bg: #15110d;
+  --bg-2: #1d1712;
+  --ink: #ece4d4;
+  --dim: #a89a83;
+  --faint: #6f6352;
+  --amber: #d9a441;
+  --cinnabar: #b8503a;
+  --line: rgba(236, 228, 212, 0.13);
+  --serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', STSong, SimSun, serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #app { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--serif);
+  line-height: 1.7;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: var(--amber); color: #14100a; }
+
+::-webkit-scrollbar { width: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3a3226; border-radius: 4px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.55em 1.3em;
+  background: transparent;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: var(--serif);
+  font-size: 0.9rem;
+  letter-spacing: 0.22em;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.25s, color 0.25s;
+}
+.btn:hover { background: var(--amber); color: #14100a; }
+
+.chip {
+  display: inline-block;
+  padding: 0.12em 0.65em;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--dim);
+  font-size: 0.72rem;
+  letter-spacing: 0.15em;
+}
