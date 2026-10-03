@@ -25,6 +25,12 @@
           :title="soundEnabled ? '关闭音效' : '开启音效'"
           @click="setSoundEnabled(!soundEnabled)"
         >{{ soundEnabled ? '🔔' : '🔇' }}</button>
+        <button
+          class="module ambient-toggle"
+          :class="{ on: ambientOn }"
+          :title="ambientOn ? '关闭环境音' : '开启环境音（古琴）'"
+          @click="ambientOn ? stopAmbient() : startAmbient()"
+        >♪ {{ ambientOn ? '停止' : '环境音' }}</button>
         <button class="module" @click="tutorialOpen = true">？新手教程</button>
         <span class="user-chip" :title="'已登录：' + user">◈ {{ user }}</span>
         <button class="module" @click="logoutUser">退出</button>
@@ -211,6 +217,10 @@
             <span class="sec-label">耍头</span>
             <button class="switch" :class="{ on: schoolParams.shuaTou }" @click="schoolParams.shuaTou = !schoolParams.shuaTou"><i></i></button>
           </div>
+          <div class="sec row">
+            <span class="sec-label">昂制（下昂）</span>
+            <button class="switch" :class="{ on: schoolParams.ang }" @click="schoolParams.ang = !schoolParams.ang"><i></i></button>
+          </div>
           <div class="sec">
             <span class="sec-label">拆解 · {{ Math.round(explode * 100) }}%</span>
             <input v-model.number="explode" type="range" min="0" max="1" step="0.01" class="slider" />
@@ -375,7 +385,7 @@ import { DEFAULT_PARAMS, puzuoHeight, puzuoDepth, type PuzuoParams } from './bof
 import { WIKI } from './bofa/kaogu'
 import { CAI_GRADES } from './core/units'
 import { JOINT_LIST } from './bofa/joints'
-import { woodSound, setSoundEnabled, soundEnabled } from './core/audio'
+import { woodSound, setSoundEnabled, soundEnabled, startAmbient, stopAmbient, ambientOn } from './core/audio'
 import { currentUser, logout, saveRecord, bestFor, loadRecords } from './core/auth'
 
 const MODULES: { id: StudioModule; label: string; disabled?: boolean }[] = [
@@ -395,7 +405,7 @@ const highlight = ref<number | null>(null)
 const selected = ref<string | null>(null)
 
 // ── 学堂 ──
-const schoolParams = reactive<PuzuoParams>({ ...DEFAULT_PARAMS })
+const schoolParams = reactive<PuzuoParams>({ ...DEFAULT_PARAMS, ang: false })
 const steps = computed(() => {
   const list: { layer: number; text: string }[] = [{ layer: 0, text: '普拍枋 · 栌斗 —— 铺作之基' }]
   for (let k = 1; k <= schoolParams.tiao; k++) {
@@ -404,9 +414,14 @@ const steps = computed(() => {
       const isTop = k === schoolParams.tiao
       list.push({
         layer: k + 0.5,
-        text: isTop ? '跳头 · 令栱与耍头承橑檐槫' : `跳头 · ${schoolParams.zhongGong ? '瓜子栱 + 慢栱' : '瓜子栱'}`
+        text: isTop
+          ? `跳头 · 令栱${schoolParams.shuaTou ? '与耍头' : ''}承橑檐槫`
+          : `跳头 · ${schoolParams.zhongGong ? '瓜子栱 + 慢栱' : '瓜子栱'}`
       })
     }
+  }
+  if (schoolParams.ang) {
+    list.push({ layer: schoolParams.tiao + 0.4, text: '下昂斜出 —— 昂尖斜向下承檐' })
   }
   list.push({ layer: schoolParams.tiao + 1, text: '橑檐槫 —— 檐荷至此传回柱身' })
   return list
@@ -646,6 +661,8 @@ onBeforeUnmount(() => clearInterval(timer))
   white-space: nowrap;
 }
 .sound-toggle { font-size: 0.95rem; }
+.ambient-toggle { font-size: 0.8rem; }
+.ambient-toggle.on { color: var(--amber); border-color: rgba(217, 164, 65, 0.4); }
 .auth-cta { border-color: rgba(217, 164, 65, 0.4); }
 .module {
   font-family: var(--serif); background: transparent; border: 1px solid transparent;

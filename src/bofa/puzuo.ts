@@ -21,13 +21,16 @@ export interface PuzuoParams {
   jiXin: boolean
   /** 耍头 */
   shuaTou: boolean
+  /** 昂制（下昂替代最上层杪栱） */
+  ang: boolean
 }
 
 export const DEFAULT_PARAMS: PuzuoParams = {
   tiao: 1,
   zhongGong: false,
   jiXin: true,
-  shuaTou: true
+  shuaTou: true,
+  ang: false
 }
 
 /** 铺作通高（分，栌斗底至橑檐槫顶）——与 buildPuzuo 的层高模型一致 */
@@ -123,56 +126,112 @@ export function buildPuzuo(
   dou('ludou', 'ludou', 'z', douMats.a, [0, 0, 0], 0, '栌斗')
 
   // 逐跳
+  const angMode = params.ang
   for (let k = 1; k <= tiao; k++) {
     const y = 12 + (k - 1) * stride // 本跳华栱底
     const zk = TIAO * k // 本跳跳心
     const tail = Math.max(TIAO * (k - 1) - 14, -8)
     const tip = zk + 8 + zoneHua
     const huaLen = tip - tail
-
-    // 华栱 k（尾端平切入斗/枋，头端卷杀）
-    const hua = createGong('huagong', gongMatOf(k), { len: huaLen, juansha: 'head' })
-    toZAxis(hua)
-    add(`huagong-${k}`, hua, [0, y + 10.5, (tail + tip) / 2], k, 22, k === 1 ? '华栱' : `华栱${k === 2 ? '二' : k === 3 ? '三' : k === 4 ? '四' : '五'}`)
-
-    // 跳头交互斗（十字口：承横栱与上层华栱/耍头），不挂标（可点击拾取）
-    dou(`jiaohudou-${k}`, 'jiaohudou', 'x', douMatOf(k), [0, y + 21, zk], k, null)
-
-    // 横栱层
     const isTop = k === tiao
-    if (!isTop) {
-      if (jiXin) {
-        // 跳头瓜子栱
-        const gz = createGong('guazi', gongMatOf(k))
-        add(`guazi-${k}`, gz, [0, y + 27 + 7.5, zk], k + 0.5, 0, k === 1 ? '瓜子栱' : null)
-        addDouOn('guazi', k, y + 42, zk, 62)
-        if (zhongGong) {
-          const mn = createGong('man', gongMatOf(k))
-          add(`man-tiao-${k}`, mn, [0, y + 48 + 7.5, zk], k + 0.5, 0, k === 1 ? '慢栱' : null)
-          addDouOn('man-tiao', k, y + 63, zk, 92)
-        }
-      }
-    } else {
-      // 最上跳头：令栱 + 耍头 + 橑檐槫
+    // 昂制且非最上层：本层仍用华栱；最上层替换为下昂
+    const useAng = angMode && isTop
+
+    if (useAng) {
+      // ── 下昂：从内上向外下倾斜的长杆，昂尖伸出檐口 ──
+      const angYTop = y + 21 + 6 // 坐于最上交互斗欹顶
+      const angTipZ = zk + 38 // 昂尖超出檐口
+      const angTailZ = Math.max(zk - 60, -8)
+      const angDrop = (zk - angTailZ) * 0.35 // 斜率约 1:2.86
+      const angYTail = angYTop + angDrop
+      const angLen = Math.hypot(angTipZ - angTailZ, angDrop)
+      const angAngle = Math.atan2(angDrop, angTipZ - angTailZ)
+
+      // 昂身：旋转的扁盒
+      const angGeo = new THREE.BoxGeometry(angLen, 14, 10)
+      const angMesh = new THREE.Mesh(angGeo, gongMatOf(k))
+      angMesh.castShadow = angMesh.receiveShadow = true
+      // 昂尖：楔形收分（用小旋转盒模拟琴面斜面）
+      const tipGeo = new THREE.BoxGeometry(12, 8, 10)
+      const angTip = new THREE.Mesh(tipGeo, gongMatOf(k))
+      angTip.castShadow = angTip.receiveShadow = true
+      // 组合昂身 + 昂尖
+      const angGroup = new THREE.Group()
+      angGroup.add(angMesh, angTip)
+      const angCX = (angTailZ + angTipZ) / 2
+      const angCY = angYTail - (angTipZ - angTailZ) * 0.35 / 2
+      angGroup.position.set(0, angCY, angCX)
+      angGroup.rotation.x = -angAngle // 绕 x 轴倾斜（z 向外倾下）
+      // 局部修正：昂身中心 y 取两端中点
+      const angMidY = (angYTail + (angYTail - angDrop)) / 2
+      angGroup.position.y = angMidY
+      angGroup.userData.partKey = 'xia-ang'
+      group.add(angGroup)
+      parts.push({ key: 'xia-ang', mesh: angGroup as unknown as THREE.Mesh, layer: k + 0.5, base: new THREE.Vector3(0, angMidY, angCX), explodeZ: 30, label: '下昂' })
+      // 调试访问（安全起见补齐 mesh 属性访问路径）
+      // ↑ angGroup 含昂身 + 昂尖两个子 mesh
+
+      // 令栱坐在昂背近头端（跳心处昂背上表面）
+      const angBackYAtLing = angYTail - angDrop // 昂背在跳心处的高程
       const ling = createGong('ling', gongMatOf(k))
-      add('linggong', ling, [0, y + 27 + 7.5, zk], k + 0.5, 0, '令栱')
-      addDouOn('ling', k, y + 42, zk, 72, k + 0.55)
+      const lingY = angBackYAtLing + 5 // 斗高 10 的一半
+      add('linggong', ling, [0, lingY + 7.5, zk], k + 0.5, 0, '令栱')
+      addDouOn('ling', k, lingY + 15, zk, 72, k + 0.55)
 
       if (shuaTou) {
         const stTail = zk - 14
         const stTip = zk + 22
         const st = createGong('shuatou', gongMatOf(k + 1), { len: stTip - stTail })
         toZAxis(st)
-        add('shuatou', st, [0, y + 27 + 10.5, (stTail + stTip) / 2], k + 0.5, 22, '耍头')
+        add('shuatou', st, [0, lingY + 7.5 + 10.5, (stTail + stTip) / 2], k + 0.5, 22, '耍头')
       }
 
-      // 齐心斗/散斗上的橑檐槫（槫底坐于斗口欹顶）
+      // 橑檐槫：坐在昂背令栱上方
       const tuanGeo = new THREE.CylinderGeometry(10.5, 10.5, 130, 28)
       const tuanMat = gongMats.hua
       const tuan = new THREE.Mesh(tuanGeo, tuanMat)
       tuan.rotation.z = Math.PI / 2
       tuan.castShadow = tuan.receiveShadow = true
-      add('liaoyan', tuan, [0, y + 48 + 10.5, zk], k + 1, 30, '橑檐槫')
+      add('liaoyan', tuan, [0, lingY + 15 + 6 + 10.5, zk], k + 1, 30, '橑檐槫')
+    } else {
+      // ── 杪栱体系（原逻辑不变）──
+      const hua = createGong('huagong', gongMatOf(k), { len: huaLen, juansha: 'head' })
+      toZAxis(hua)
+      add(`huagong-${k}`, hua, [0, y + 10.5, (tail + tip) / 2], k, 22, k === 1 ? '华栱' : `华栱${k === 2 ? '二' : k === 3 ? '三' : k === 4 ? '四' : '五'}`)
+
+      dou(`jiaohudou-${k}`, 'jiaohudou', 'x', douMatOf(k), [0, y + 21, zk], k, null)
+
+      if (!isTop) {
+        if (jiXin) {
+          const gz = createGong('guazi', gongMatOf(k))
+          add(`guazi-${k}`, gz, [0, y + 27 + 7.5, zk], k + 0.5, 0, k === 1 ? '瓜子栱' : null)
+          addDouOn('guazi', k, y + 42, zk, 62)
+          if (zhongGong) {
+            const mn = createGong('man', gongMatOf(k))
+            add(`man-tiao-${k}`, mn, [0, y + 48 + 7.5, zk], k + 0.5, 0, k === 1 ? '慢栱' : null)
+            addDouOn('man-tiao', k, y + 63, zk, 92)
+          }
+        }
+      } else {
+        const ling = createGong('ling', gongMatOf(k))
+        add('linggong', ling, [0, y + 27 + 7.5, zk], k + 0.5, 0, '令栱')
+        addDouOn('ling', k, y + 42, zk, 72)
+
+        if (shuaTou) {
+          const stTail = zk - 14
+          const stTip = zk + 22
+          const st = createGong('shuatou', gongMatOf(k + 1), { len: stTip - stTail })
+          toZAxis(st)
+          add('shuatou', st, [0, y + 27 + 10.5, (stTail + stTip) / 2], k + 0.5, 22, '耍头')
+        }
+
+        const tuanGeo = new THREE.CylinderGeometry(10.5, 10.5, 130, 28)
+        const tuanMat = gongMats.hua
+        const tuan = new THREE.Mesh(tuanGeo, tuanMat)
+        tuan.rotation.z = Math.PI / 2
+        tuan.castShadow = tuan.receiveShadow = true
+        add('liaoyan', tuan, [0, y + 48 + 10.5, zk], k + 1, 30, '橑檐槫')
+      }
     }
   }
 

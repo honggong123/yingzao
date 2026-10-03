@@ -1,5 +1,6 @@
-// 木声合成器 —— 全部由 Web Audio 程序化合成，零音频素材。
-// 拼装"咔哒"、错序闷响、完成拨弦（五声音阶），服务于拼装挑战的手感。
+// 木声合成器 + 环境音氛围 —— 全部由 Web Audio 程序化合成，零音频素材。
+// 拼装"咔哒"、错序闷响、完成拨弦（五声音阶）、环境古琴泛音（Karplus-Strong）。
+import { ref } from 'vue'
 import { ref } from 'vue'
 
 let ctx: AudioContext | null = null
@@ -27,6 +28,85 @@ export function setSoundEnabled(v: boolean) {
     /* 无痕模式忽略 */
   }
   applyGain()
+}
+
+// ── 环境音氛围：Karplus-Strong 古琴泛音，五声音阶随机漫步 ──
+let ambientTimer: ReturnType<typeof setTimeout> | null = null
+let ambientBus: GainNode | null = null
+export const ambientOn = ref(false)
+
+/** 生成一根弦的 KS 采样（-frequency f, 3 秒衰减） */
+function ksBuffer(f: number): AudioBuffer {
+  const sr = ctx!.sampleRate
+  const len = Math.floor(sr * 3.5)
+  const buf = ctx!.createBuffer(1, len, sr)
+  const d = buf.getChannelData(0)
+  const N = Math.max(2, Math.round(sr / f))
+  const delay = new Float32Array(N)
+  for (let i = 0; i < N; i++) delay[i] = Math.random() * 2 - 1
+  let idx = 0
+  for (let i = 0; i < len; i++) {
+    const out = delay[idx]
+    d[i] = out
+    const next = (idx + 1) % N
+    delay[idx] = 0.998 * 0.5 * (delay[idx] + delay[next])
+    idx = next
+  }
+  return buf
+}
+
+const ksCache = new Map<number, AudioBuffer>()
+function getKs(f: number): AudioBuffer {
+  if (!ksCache.has(f)) ksCache.set(f, ksBuffer(f))
+  return ksCache.get(f)!
+}
+
+/** 单音拨弦（带声像） */
+function ksPluck(freq: number, when: number, vol: number, pan = 0) {
+  const c = ensure()
+  const src = c.createBufferSource()
+  src.buffer = getKs(freq)
+  const p = c.createStereoPanner()
+  p.pan.value = pan
+  const g = c.createGain()
+  g.gain.value = vol
+  src.connect(p).connect(g).connect(ambientBus ?? master!)
+  src.start(when)
+}
+
+const GUQIN_PENT = [65.41, 73.42, 82.41, 98.0, 110.0, 130.81, 146.83, 164.81, 196.0, 220.0]
+
+function ambientPhrase() {
+  const c = ensure()
+  const t = c.currentTime + 0.1
+  const count = Math.random() > 0.6 ? 2 : 1
+  for (let i = 0; i < count; i++) {
+    const f = GUQIN_PENT[Math.floor(Math.random() * GUQIN_PENT.length)]
+    ksPluck(f, t + i * (0.8 + Math.random() * 1.2), 0.06 + Math.random() * 0.06, (Math.random() - 0.5) * 1.2)
+  }
+}
+
+function scheduleAmbient() {
+  if (!ambientOn.value) return
+  ambientPhrase()
+  ambientTimer = setTimeout(scheduleAmbient, 4500 + Math.random() * 5500)
+}
+
+export function startAmbient() {
+  if (ambientOn.value) return
+  ensure()
+  if (!ambientBus) {
+    ambientBus = ctx!.createGain()
+    ambientBus.gain.value = 0.6
+    ambientBus.connect(master!)
+  }
+  ambientOn.value = true
+  scheduleAmbient()
+}
+
+export function stopAmbient() {
+  ambientOn.value = false
+  if (ambientTimer) { clearTimeout(ambientTimer); ambientTimer = null }
 }
 
 function ensure(): AudioContext {
