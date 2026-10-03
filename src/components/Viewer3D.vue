@@ -48,7 +48,6 @@ const props = defineProps<{
   highlight?: number | null
   grade?: number
   gameStep?: number
-  ghost?: boolean
   jointId?: string
   jointT?: number
   quakeOpts?: QuakeOptions
@@ -612,7 +611,6 @@ watch(() => props.grade, () => {
 })
 watch(() => props.explode, applyExplode)
 watch(() => props.highlight, applyPartMaterials)
-watch(() => props.ghost, applyPartMaterials)
 
 onBeforeUnmount(() => {
   clearLabels()

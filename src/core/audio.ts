@@ -1,13 +1,39 @@
 // 木声合成器 —— 全部由 Web Audio 程序化合成，零音频素材。
 // 拼装"咔哒"、错序闷响、完成拨弦（五声音阶），服务于拼装挑战的手感。
+import { ref } from 'vue'
+
 let ctx: AudioContext | null = null
 let master: GainNode | null = null
+
+/** 音效开关（响应式，头部按钮绑定；偏好持久化） */
+const stored = (() => {
+  try {
+    return localStorage.getItem('yingzao-sound') !== 'off'
+  } catch {
+    return true
+  }
+})()
+export const soundEnabled = ref(stored)
+
+function applyGain() {
+  if (master) master.gain.value = soundEnabled.value ? 0.8 : 0
+}
+
+export function setSoundEnabled(v: boolean) {
+  soundEnabled.value = v
+  try {
+    localStorage.setItem('yingzao-sound', v ? 'on' : 'off')
+  } catch {
+    /* 无痕模式忽略 */
+  }
+  applyGain()
+}
 
 function ensure(): AudioContext {
   if (!ctx) {
     ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
     master = ctx.createGain()
-    master.gain.value = 0.8
+    master.gain.value = soundEnabled.value ? 0.8 : 0
     master.connect(ctx.destination)
   }
   if (ctx.state === 'suspended') ctx.resume()

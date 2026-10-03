@@ -20,6 +20,11 @@
         >{{ m.label }}</button>
       </nav>
       <div class="user-area">
+        <button
+          class="module sound-toggle"
+          :title="soundEnabled ? '关闭音效' : '开启音效'"
+          @click="setSoundEnabled(!soundEnabled)"
+        >{{ soundEnabled ? '🔔' : '🔇' }}</button>
         <button class="module" @click="tutorialOpen = true">？新手教程</button>
         <span class="user-chip" :title="'已登录：' + user">◈ {{ user }}</span>
         <button class="module" @click="logoutUser">退出</button>
@@ -60,7 +65,7 @@
               <p class="dims" style="margin-top: 0.5rem">从下方构件盘点选它落位。</p>
             </template>
             <p v-else class="role">按<b>铺作次序</b>从下方构件盘选出下一件。选错会晃——历史的次序没有商量。</p>
-            <p class="dims" style="margin-top: 0.5rem">用时 {{ game.elapsed }}s · 错误 {{ game.wrong }}</p>
+            <p class="dims" style="margin-top: 0.5rem">已落位：{{ game.lastPlaced || '—' }} · 用时 {{ game.elapsed }}s · 错误 {{ game.wrong }}</p>
           </template>
           <template v-else-if="game.phase === 'done'">
             <p class="dims">落成 · 用时 {{ game.elapsed }}s · 错误 {{ game.wrong }} 次</p>
@@ -359,13 +364,18 @@ import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, reactive, r
 import type { StudioModule } from './components/Viewer3D.vue'
 import TutorialGuide from './components/TutorialGuide.vue'
 import LoginGate from './components/LoginGate.vue'
-// three.js 体积较大：登录门先行渲染，Viewer3D（含 three）按需异步加载
-const Viewer3D = defineAsyncComponent(() => import('./components/Viewer3D.vue'))
+import LoadingSplash from './components/LoadingSplash.vue'
+// three.js 体积较大：登录门先行渲染，Viewer3D（含 three）按需异步加载（带加载动画）
+const Viewer3D = defineAsyncComponent({
+  loader: () => import('./components/Viewer3D.vue'),
+  loadingComponent: LoadingSplash,
+  delay: 200,
+})
 import { DEFAULT_PARAMS, puzuoHeight, puzuoDepth, type PuzuoParams } from './bofa/puzuo'
 import { WIKI } from './bofa/kaogu'
 import { CAI_GRADES } from './core/units'
 import { JOINT_LIST } from './bofa/joints'
-import { woodSound } from './core/audio'
+import { woodSound, setSoundEnabled, soundEnabled } from './core/audio'
 import { currentUser, logout, saveRecord, bestFor, loadRecords } from './core/auth'
 
 const MODULES: { id: StudioModule; label: string; disabled?: boolean }[] = [
@@ -415,6 +425,7 @@ const game = reactive({
   elapsed: 0,
   total: 0,
   tutorial: false,
+  lastPlaced: '',
   candidates: [] as { key: string; name: string }[],
   seq: shallowRef<SeqItem[]>([]),
   puzuoName: ''
@@ -478,6 +489,7 @@ function pick(i: number) {
   const c = game.candidates[i]
   if (c.name === game.seq[game.step]?.name) {
     game.step++
+    game.lastPlaced = c.name
     if (game.step >= game.seq.length) {
       game.phase = 'done'
       clearInterval(timer)
@@ -633,6 +645,7 @@ onBeforeUnmount(() => clearInterval(timer))
   letter-spacing: 0.15em;
   white-space: nowrap;
 }
+.sound-toggle { font-size: 0.95rem; }
 .auth-cta { border-color: rgba(217, 164, 65, 0.4); }
 .module {
   font-family: var(--serif); background: transparent; border: 1px solid transparent;
@@ -729,6 +742,11 @@ onBeforeUnmount(() => clearInterval(timer))
   color: var(--faint); font-size: 0.68rem; letter-spacing: 0.22em; pointer-events: none;
 }
 @media (max-width: 860px) {
+  .topbar { padding: 0.6rem 0.9rem; }
+  .seal { width: 36px; height: 36px; font-size: 0.85rem; }
+  .brand-text strong { font-size: 0.9rem; letter-spacing: 0.12em; }
+  .brand-text span { display: none; }
+  .user-chip { display: none; }
   .modules { display: none; }
   .console-toggle {
     display: inline-flex;
