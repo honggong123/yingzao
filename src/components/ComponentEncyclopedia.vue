@@ -71,13 +71,20 @@ const sel = computed(() => entries.value[selIdx.value] ?? null)
 
 watch(
   () => props.open,
-  (v) => { if (v) selIdx.value = 0 }
+  (v) => {
+    if (v && props.initialKey) {
+      const idx = WIKI_ORDER.indexOf(props.initialKey)
+      if (idx >= 0) selIdx.value = idx
+    } else if (v) {
+      selIdx.value = 0
+    }
+  }
 )
 watch(
   () => props.initialKey,
   (k) => {
-    if (!k) return
-    const idx = entries.value.findIndex((e) => e.name === k)
+    if (!k || !props.open) return
+    const idx = WIKI_ORDER.indexOf(k)
     if (idx >= 0) selIdx.value = idx
   }
 )
