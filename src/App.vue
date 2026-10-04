@@ -64,14 +64,22 @@
           </div>
           <template v-if="game.phase === 'playing'">
             <p class="dims">第 {{ Math.min(game.step + 1, game.total) }} / {{ game.total }} 件 · 已落位 {{ game.step }}</p>
-            <template v-if="game.tutorial && tutorialHint">
+            <template v-if="game.guided && guidedStep">
+              <div class="guided-card">
+                <p class="gd-name">「{{ guidedStep.name }}」</p>
+                <p class="gd-why">{{ guidedStep.why }}</p>
+                <p class="gd-tip">💡 {{ guidedStep.tip }}</p>
+              </div>
+              <p class="role" style="margin-top: 0.5rem">从下方构件盘点选它落位。</p>
+            </template>
+            <template v-else-if="game.tutorial && tutorialHint">
               <p class="role">
                 教学提示：下一件是<b>「{{ tutorialHint.name }}」</b>——{{ tutorialHint.role }}
               </p>
               <p class="dims" style="margin-top: 0.5rem">从下方构件盘点选它落位。</p>
             </template>
             <p v-else class="role">按<b>铺作次序</b>从下方构件盘选出下一件。选错会晃——历史的次序没有商量。</p>
-            <p class="dims" style="margin-top: 0.5rem">已落位：{{ game.lastPlaced || '—' }} · 用时 {{ game.elapsed }}s · 错误 {{ game.wrong }}</p>
+            <p class="dims" style="margin-top: 0.5rem">用时 {{ game.elapsed }}s · 错误 {{ game.wrong }}</p>
           </template>
           <template v-else-if="game.phase === 'done'">
             <p class="dims">落成 · 用时 {{ game.elapsed }}s · 错误 {{ game.wrong }} 次</p>
@@ -260,8 +268,12 @@
             <span class="sec-label">新手教学（无干扰 + 提示）</span>
             <button class="switch" :class="{ on: gameDraft.tutorial }" @click="gameDraft.tutorial = !gameDraft.tutorial"><i></i></button>
           </div>
+          <div class="sec row">
+            <span class="sec-label">教学关卡（引导式搭建）</span>
+            <button class="switch" :class="{ on: gameDraft.guided }" @click="gameDraft.guided = !gameDraft.guided"><i></i></button>
+          </div>
           <button class="btn wide" @click="startGame">
-            {{ game.phase === 'playing' ? '重新开始' : '开始拼装' }}
+            {{ game.phase === 'playing' ? '重新开始' : gameDraft.guided ? '开始教学搭建' : '开始拼装' }}
           </button>
           <p class="tip" style="margin-top: 0.7rem">
             构件盘在下方。每一步从候选里选出正确的下一件——干扰件就在其中。
@@ -449,12 +461,13 @@ const game = reactive({
   elapsed: 0,
   total: 0,
   tutorial: false,
+  guided: false,
   lastPlaced: '',
   candidates: [] as { key: string; name: string }[],
   seq: shallowRef<SeqItem[]>([]),
   puzuoName: ''
 })
-const gameDraft = reactive({ tiao: 1, zhongGong: false, tutorial: false })
+const gameDraft = reactive({ tiao: 1, zhongGong: false, tutorial: false, guided: false })
 let timer: ReturnType<typeof setInterval> | undefined
 let startedAt = 0
 const shakeIdx = ref(-1)
@@ -465,18 +478,19 @@ function startGame() {
   game.step = 0
   game.wrong = 0
   game.elapsed = 0
-  game.tutorial = gameDraft.tutorial
-  game.puzuoName = `${PUZUO_NAMES[game.params.tiao]}铺作${game.params.zhongGong ? '重栱' : '单栱'}计心造`
+  game.tutorial = gameDraft.tutorial || gameDraft.guided
+  game.guided = gameDraft.guided
+  game.guided = gameDraft.guided
+  game.puzuoName = `${PUZUO_NAMES[game.params.tiao]}铺作${game.params.zhongGong ? '重栱' : '单栱'}${game.params.ang ? '昂制' : '杪栱'}计心造`
   startedAt = Date.now()
   clearInterval(timer)
   timer = setInterval(() => {
     if (game.phase === 'playing') game.elapsed = Math.round((Date.now() - startedAt) / 1000)
   }, 500)
-  // 触发 viewer 重建（参数对象换新）→ sequence 事件回填
   game.seq = []
   viewerParams.value = { ...game.params, nonce: (viewerParams.value.nonce ?? 0) + 1 } as PuzuoParams
   module.value = 'game'
-  consoleOpen.value = false // 移动端开局收起控制台
+  consoleOpen.value = false
 }
 
 function onSequence(seq: SeqItem[]) {
@@ -546,6 +560,38 @@ const tutorialHint = computed(() => {
   const next = game.seq[game.step]
   if (!next) return null
   return { name: next.name, role: WIKI[next.wikiKey]?.role ?? '' }
+})
+
+// 引导模式：每步的教育文案
+const GUIDE_TEXT: Record<string, { why: string; tip: string }> = {
+  puaipai: { why: '先铺设普拍枋——它是斗栱的基座，所有构件都从它开始。', tip: '普拍枋横贯柱头，让每朵铺作有一个共同的坐面。' },
+  ludou: { why: '在柱头安放栌斗——大斗是整朵铺作的承重起点，开口向上准备承托华栱。', tip: '注意栌斗的三个分区：耳、平、欹——开口在耳与耳之间。' },
+  huagong: { why: '将华栱插入栌斗口内——它是唯一向外挑出的构件，像悬臂梁一样把檐口推出去。', tip: '华栱用足材（21分），比横栱更厚实——因为它承受的弯矩最大。' },
+  'jiaohudou': { why: '在华栱跳头放交互斗——十字开口准备承接下一层。', tip: '交互斗的十字口很关键：一个方向接华栱，另一个方向接横栱。' },
+  nidao: { why: '在栌斗口内安放泥道栱——它与华栱十字相交，负责沿墙面方向的横向连系。', tip: '泥道栱因常刷土朱而得名——"泥道"就是墙面的意思。' },
+  sandou: { why: '在横栱两端各放一只散斗——它们将集中力分散传给上层构件。', tip: '"散"言其多——一朵八铺作中的散斗可达十数只。' },
+  qixindou: { why: '在栱心正中放一只齐心斗——它恰好压在铺作的中轴线上。', tip: '齐心斗和散斗高度相同（10分），但位置不同——一在心，一在两端。' },
+  zhutoufang: { why: '在斗上铺设柱头枋——它把各朵铺作串联成整体，让力沿墙面方向均匀传递。', tip: '柱头枋与泥道栱平行——它在铺作层的最上方，是"屋面"与"斗栱"的分界线。' },
+  linggong: { why: '在最外跳头安放令栱——五瓣卷杀是它的身份特征，它是离屋檐最近的栱。', tip: '令栱长72分，比泥道栱长9分——因为它直接承托檐口荷载。' },
+  shuatou: { why: '插入耍头——蚂蚱头从令栱上方探出，是铺作的装饰收笔，不承重。', tip: '在昂制铺作中，耍头的位置常被昂替代——它是华栱的"装饰替身"。' },
+  liaoyan: { why: '安放橑檐槫——圆形截面，屋面椽子搭在它上面。整朵铺作的使命到此完成。', tip: '从椽到槫，从槫到令栱，从令栱到华栱——力沿着这条路径传回柱身。' },
+  man: { why: '在瓜子栱上安放慢栱——它是重栱造的标志，让横向传力路径加倍。', tip: '慢栱长92分，是铺作中最长的栱——"慢"在从容跨得更远。' },
+  guazi: { why: '在跳头安放瓜子栱——短横栱，将力分配到华栱的跳头上。', tip: '瓜子栱62分，比泥道栱短1分——差这1分就是身份的区别。' },
+}
+
+const guidedStep = computed(() => {
+  if (!game.guided || game.phase !== 'playing') return null
+  const item = game.seq[game.step]
+  if (!item) return null
+  const wikiKey = item.key.split('-')[0]
+  const mapped = wikiKey === 'jiaohudou' ? 'jiaohidou' : wikiKey
+  const w = WIKI[mapped]
+  const g = GUIDE_TEXT[mapped]
+  return {
+    name: item.name,
+    why: g?.why ?? w?.role ?? '',
+    tip: g?.tip ?? w?.hook ?? ''
+  }
 })
 
 const rating = computed(() => (game.wrong === 0 ? '甲' : game.wrong <= 2 ? '乙' : '丙'))
@@ -713,6 +759,17 @@ onBeforeUnmount(() => clearInterval(timer))
 }
 .src-label { border: 1px solid var(--line); padding: 0.05em 0.5em; border-radius: 2px; flex-shrink: 0; }
 .hook { margin-top: 0.55rem; color: var(--ink); font-size: 0.9rem; }
+
+.guided-card {
+  background: rgba(217, 164, 65, 0.06);
+  border: 1px solid rgba(217, 164, 65, 0.25);
+  border-radius: 3px;
+  padding: 0.8rem 1rem;
+  margin: 0.5rem 0;
+}
+.gd-name { color: var(--amber); font-size: 1.05rem; font-weight: bold; letter-spacing: 0.1em; margin-bottom: 0.4rem; }
+.gd-why { color: var(--ink); font-size: 0.85rem; line-height: 1.7; margin-bottom: 0.4rem; }
+.gd-tip { color: var(--faint); font-size: 0.78rem; line-height: 1.6; }
 
 .console {
   position: absolute; right: 1.4rem; top: 1rem; width: min(280px, calc(100vw - 2.8rem));
