@@ -577,6 +577,7 @@ const GUIDE_TEXT: Record<string, { why: string; tip: string }> = {
   liaoyan: { why: '安放橑檐槫——圆形截面，屋面椽子搭在它上面。整朵铺作的使命到此完成。', tip: '从椽到槫，从槫到令栱，从令栱到华栱——力沿着这条路径传回柱身。' },
   man: { why: '在瓜子栱上安放慢栱——它是重栱造的标志，让横向传力路径加倍。', tip: '慢栱长92分，是铺作中最长的栱——"慢"在从容跨得更远。' },
   guazi: { why: '在跳头安放瓜子栱——短横栱，将力分配到华栱的跳头上。', tip: '瓜子栱62分，比泥道栱短1分——差这1分就是身份的区别。' },
+  xiaang: { why: '昂制铺作以斜代平——下昂斜置，昂尖探向檐口，用杠杆原理把出跳拉得更远。', tip: '昂尖批竹斜面指向檐口，昂尾翘入梁栿之下——一根斜木，撑起半个屋檐。' },
 }
 
 const guidedStep = computed(() => {
@@ -584,7 +585,7 @@ const guidedStep = computed(() => {
   const item = game.seq[game.step]
   if (!item) return null
   const wikiKey = item.key.split('-')[0]
-  const mapped = wikiKey === 'jiaohudou' ? 'jiaohidou' : wikiKey
+  const mapped = wikiKey === 'jiaohudou' ? 'jiaohidou' : wikiKey === 'xia' ? 'xiaang' : wikiKey
   const w = WIKI[mapped]
   const g = GUIDE_TEXT[mapped]
   return {
@@ -685,7 +686,7 @@ const milestoneText = computed(() => {
 const wiki = computed(() => {
   if (!selected.value) return null
   const base = selected.value.split('-')[0]
-  const key = base === 'jiaohudou' ? 'jiaohidou' : base
+  const key = base === 'jiaohudou' ? 'jiaohidou' : base === 'xia' ? 'xiaang' : base
   return WIKI[key] ?? null
 })
 

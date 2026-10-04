@@ -95,7 +95,8 @@ const labelEls: { obj: CSS2DObject; el: HTMLDivElement }[] = []
 const PART_NAMES: Record<string, string> = {
   puaipai: '普拍枋', ludou: '栌斗', huagong: '华栱', nidao: '泥道栱',
   jiaohudou: '交互斗', sandou: '散斗', qixindou: '齐心斗', guazi: '瓜子栱',
-  man: '慢栱', zhutoufang: '柱头枋', linggong: '令栱', shuatou: '耍头', liaoyan: '橑檐槫'
+  man: '慢栱', zhutoufang: '柱头枋', linggong: '令栱', shuatou: '耍头', liaoyan: '橑檐槫',
+  xia: '下昂'
 }
 
 function nameOf(key: string): string {
@@ -110,6 +111,7 @@ function wikiKeyOf(key: string): string {
   if (/-dou-c$/.test(key) || key.startsWith('qixindou')) return 'qixindou'
   const base = key.split('-')[0]
   if (base === 'jiaohudou') return 'jiaohidou'
+  if (base === 'xia') return 'xiaang'
   return WIKI[base] ? base : base
 }
 
