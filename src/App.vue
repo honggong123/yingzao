@@ -225,6 +225,9 @@
             <span class="sec-label">拆解 · {{ Math.round(explode * 100) }}%</span>
             <input v-model.number="explode" type="range" min="0" max="1" step="0.01" class="slider" />
           </div>
+          <button class="btn wide enc-btn" @click="openEncyclopedia()">
+            📖 构件图鉴
+          </button>
           <div class="sec">
             <span class="sec-label">铺作次序 · 悬停点亮一层</span>
             <ol class="steps">
@@ -362,6 +365,11 @@
 
       <!-- 教程（登录后首次访问自动弹出） -->
       <TutorialGuide :open="tutorialOpen" @close="tutorialOpen = false" />
+      <ComponentEncyclopedia
+        :open="encyclopediaOpen"
+        :initial-key="encyclopediaInitial"
+        @close="encyclopediaOpen = false"
+      />
 
       <div class="hint">拖拽旋转 · 滚轮缩放 · 点击构件读考据</div>
       <div class="milestone">{{ milestoneText }}</div>
@@ -375,6 +383,7 @@ import type { StudioModule } from './components/Viewer3D.vue'
 import TutorialGuide from './components/TutorialGuide.vue'
 import LoginGate from './components/LoginGate.vue'
 import LoadingSplash from './components/LoadingSplash.vue'
+import ComponentEncyclopedia from './components/ComponentEncyclopedia.vue'
 // three.js 体积较大：登录门先行渲染，Viewer3D（含 three）按需异步加载（带加载动画）
 const Viewer3D = defineAsyncComponent({
   loader: () => import('./components/Viewer3D.vue'),
@@ -569,11 +578,18 @@ function onQuakeStats(s: { ratio: number; peakG: number; peakR: number }) {
 const user = currentUser
 const tutorialOpen = ref(false)
 const consoleOpen = ref(false)
+const encyclopediaOpen = ref(false)
+const encyclopediaInitial = ref('')
 const myRecordList = ref<ReturnType<typeof loadRecords>>([])
 
 function logoutUser() {
   logout()
   myRecordList.value = []
+}
+
+function openEncyclopedia(key?: string) {
+  encyclopediaInitial.value = key ?? ''
+  encyclopediaOpen.value = true
 }
 
 // 登录后：载入成绩；首次使用（v2 教程标记不存在）自动弹新手教程
@@ -629,6 +645,12 @@ const wiki = computed(() => {
 
 function onSelect(key: string | null) {
   selected.value = key
+  if (key && module.value === 'school') {
+    const base = key.split('-')[0]
+    const wikiMap: Record<string, string> = { jiaohudou: 'jiaohidou', linggong: 'linggong' }
+    const wk = WIKI[wikiMap[base] ?? base] ? (wikiMap[base] ?? base) : ''
+    if (wk) openEncyclopedia(wk)
+  }
 }
 
 onBeforeUnmount(() => clearInterval(timer))
@@ -715,6 +737,7 @@ onBeforeUnmount(() => clearInterval(timer))
 .seg-btn.active { border-color: var(--amber); color: var(--amber); background: rgba(217, 164, 65, 0.1); }
 .joints-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; }
 .btn.wide { width: 100%; justify-content: center; }
+.enc-btn { width: 100%; justify-content: center; margin-top: 0.8rem; }
 .tip { color: var(--faint); font-size: 0.75rem; letter-spacing: 0.08em; }
 .switch {
   width: 42px; height: 22px; border-radius: 11px; border: 1px solid var(--line);
