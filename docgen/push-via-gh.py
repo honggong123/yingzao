@@ -121,7 +121,7 @@ else:
     raise RuntimeError("tree 创建失败")
 
 commit_payload = {
-    "message": "《营造》v0.6 —— 修复昂制铺作：下昂一体成型（批竹昂尖）+ 昂背承跳头诸件 + 下昂考据词条",
+    "message": "《营造》v0.7 —— 修复构件悬空：泥道栱列坐栌斗口、散斗高8→10、齐心斗开口朝向、昂制槫位；拼接次序核查；拼装挑战补昂制关卡",
     "tree": tree["sha"],
     "parents": [head_sha],
 }

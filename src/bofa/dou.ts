@@ -24,8 +24,8 @@ export interface DouSpec {
 const DOU_SPECS: Record<DouType, DouSpec> = {
   ludou: { w: 32, d: 32, h: 20, ear: 8, slot: 10 },
   jiaohudou: { w: 18, d: 16, h: 10, ear: 4, slot: 10 },
-  sandou: { w: 16, d: 14, h: 8, ear: 4, slot: 10 },
-  qixindou: { w: 16, d: 16, h: 8, ear: 4, slot: 10 }
+  sandou: { w: 16, d: 14, h: 10, ear: 4, slot: 10 },
+  qixindou: { w: 16, d: 16, h: 10, ear: 4, slot: 10 }
 }
 
 /**

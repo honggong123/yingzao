@@ -263,6 +263,10 @@
               <button class="seg-btn" :class="{ active: !gameDraft.zhongGong }" @click="gameDraft.zhongGong = false">单栱造</button>
               <button class="seg-btn" :class="{ active: gameDraft.zhongGong }" @click="gameDraft.zhongGong = true">重栱造</button>
             </div>
+            <div class="sec row" style="margin-top: 0.6rem; margin-bottom: 0">
+              <span class="sec-label">昂制（下昂）</span>
+              <button class="switch" :class="{ on: gameDraft.ang }" @click="gameDraft.ang = !gameDraft.ang"><i></i></button>
+            </div>
           </div>
           <div class="sec row">
             <span class="sec-label">新手教学（无干扰 + 提示）</span>
@@ -467,13 +471,13 @@ const game = reactive({
   seq: shallowRef<SeqItem[]>([]),
   puzuoName: ''
 })
-const gameDraft = reactive({ tiao: 1, zhongGong: false, tutorial: false, guided: false })
+const gameDraft = reactive({ tiao: 1, zhongGong: false, ang: false, tutorial: false, guided: false })
 let timer: ReturnType<typeof setInterval> | undefined
 let startedAt = 0
 const shakeIdx = ref(-1)
 
 function startGame() {
-  game.params = { tiao: gameDraft.tiao, zhongGong: gameDraft.zhongGong, jiXin: true, shuaTou: true }
+  game.params = { tiao: gameDraft.tiao, zhongGong: gameDraft.zhongGong, ang: gameDraft.ang, jiXin: true, shuaTou: true }
   game.phase = 'playing'
   game.step = 0
   game.wrong = 0
@@ -534,7 +538,7 @@ function pick(i: number) {
       woodSound.complete()
       if (user.value) {
         saveRecord(user.value, {
-          levelKey: `${game.params.tiao}-${game.params.zhongGong ? '重' : '单'}`,
+          levelKey: `${game.params.tiao}-${game.params.zhongGong ? '重' : '单'}${game.params.ang ? '-昂' : ''}`,
           levelName: game.puzuoName,
           time: game.elapsed,
           wrong: game.wrong,

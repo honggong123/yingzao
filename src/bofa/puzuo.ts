@@ -92,11 +92,12 @@ export function buildPuzuo(
     mat: THREE.Material, pos: [number, number, number], layer: number, label: string | null = null
   ) => add(key, createDou(type, mat, slotAxis), pos, layer, 0, label)
 
-  function addDouOn(prefix: string, k: number, gongTop: number, z: number, gongLen: number, layer = k + 0.5) {
+  function addDouOn(prefix: string, k: number, gongTop: number, z: number, gongLen: number, layer = k + 0.5, centerSlot: 'x' | 'z' = 'x') {
     const half = gongLen / 2 - 8
     dou(`${prefix}-dou-n`, 'sandou', 'x', douMatOf(k), [-half, gongTop - 1.5, z], layer)
     dou(`${prefix}-dou-s`, 'sandou', 'x', douMatOf(k), [half, gongTop - 1.5, z], layer)
-    dou(`${prefix}-dou-c`, 'qixindou', 'x', douMatOf(k), [0, gongTop, z], layer)
+    // 栱心齐心斗的开口朝向随上承构件：跳头承华栱（z 向），墙列承枋/慢栱（x 向）
+    dou(`${prefix}-dou-c`, 'qixindou', centerSlot, douMatOf(k), [0, gongTop, z], layer)
   }
 
   // ── 底层：普拍枋 + 栌斗 ──
@@ -176,7 +177,7 @@ export function buildPuzuo(
       const tuan = new THREE.Mesh(tuanGeo, gongMats.hua)
       tuan.rotation.z = Math.PI / 2
       tuan.castShadow = tuan.receiveShadow = true
-      add('liaoyan', tuan, [0, backAtZk + 21 + 10.5, zk], k + 1, 30, '橑檐槫')
+      add('liaoyan', tuan, [0, backAtZk + 21 + 17, zk], k + 1, 30, '橑檐槫')
     } else {
       // 华栱 k
       const hua = createGong('huagong', gongMatOf(k), { len: huaLen, juansha: 'head' })
@@ -186,14 +187,14 @@ export function buildPuzuo(
 
       if (!isTop) {
         if (jiXin) {
-          // 瓜子栱
+          // 瓜子栱（跳头横栱，其上齐心斗开口顺 z 纳上层华栱）
           const gz = createGong('guazi', gongMatOf(k))
           add(`guazi-${k}`, gz, [0, y + 27 + 7.5, zk], k + 0.5, 0, k === 1 ? '瓜子栱' : null)
-          addDouOn('guazi', k, y + 42, zk, 62)
+          addDouOn('guazi', k, y + 42, zk, 62, k + 0.5, 'z')
           if (zhongGong) {
             const mn = createGong('man', gongMatOf(k))
             add(`man-tiao-${k}`, mn, [0, y + 48 + 7.5, zk], k + 0.5, 0, k === 1 ? '慢栱' : null)
-            addDouOn('man-tiao', k, y + 63, zk, 92)
+            addDouOn('man-tiao', k, y + 63, zk, 92, k + 0.5, 'z')
           }
         }
       } else {
@@ -219,21 +220,22 @@ export function buildPuzuo(
     }
   }
 
-  // 泥道栱 + 柱头枋
+  // 泥道栱 + 柱头枋：泥道栱与华栱十字相交，同坐栌斗口（欹顶 y=12）；
+  // 枋底 = 泥道栱上齐心斗欹顶（单栱 33 = 12+15+6；重栱 54 = 33+15+6）
   const nidao = createGong('nidao', gongMats.heng)
-  add('nidao', nidao, [0, 33 + 7.5, 0], 1, 0, '泥道栱')
-  addDouOn('nidao', 1, 48, 0, 63)
-  let fangBottom = 58
+  add('nidao', nidao, [0, 12 + 7.5, 0], 1, 0, '泥道栱')
+  addDouOn('nidao', 1, 27, 0, 63)
+  let fangBottom = 33
   if (zhongGong) {
     const mn = createGong('man', gongMats.hua)
-    add('man-wall', mn, [0, 54 + 7.5, 0], 1.5, 0, null)
-    addDouOn('man-wall', 1, 69, 0, 92)
-    fangBottom = 75
+    add('man-wall', mn, [0, 33 + 7.5, 0], 1.5, 0, null)
+    addDouOn('man-wall', 1, 48, 0, 92)
+    fangBottom = 54
   }
   const fangGeo = new THREE.BoxGeometry(72, 15, 10)
   const fang = new THREE.Mesh(fangGeo, fangMat)
   fang.castShadow = fang.receiveShadow = true
-  add('zhutoufang', fang, [0, fangBottom + 7.5, 0], 1.5, 0, '柱头枋')
+  add('zhutoufang', fang, [0, fangBottom + 7.5, 0], 1.6, 0, '柱头枋')
 
   const height = 12 + (tiao - 1) * stride + (params.ang ? 83 : 69)
 
