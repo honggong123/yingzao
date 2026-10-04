@@ -645,12 +645,6 @@ const wiki = computed(() => {
 
 function onSelect(key: string | null) {
   selected.value = key
-  if (key && module.value === 'school') {
-    const base = key.split('-')[0]
-    const wikiMap: Record<string, string> = { jiaohudou: 'jiaohidou', linggong: 'linggong' }
-    const wk = WIKI[wikiMap[base] ?? base] ? (wikiMap[base] ?? base) : ''
-    if (wk) openEncyclopedia(wk)
-  }
 }
 
 onBeforeUnmount(() => clearInterval(timer))
