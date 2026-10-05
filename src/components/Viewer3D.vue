@@ -482,7 +482,8 @@ onMounted(() => {
     color: '#a4762a', emissive: '#e8b454', emissiveIntensity: 0.8, roughness: 0.5
   })
   ghostMat = new THREE.MeshStandardMaterial({
-    color: '#d9a441', transparent: true, opacity: 0.22, depthWrite: false, roughness: 0.9
+    color: '#d9a441', transparent: true, opacity: 0.38, depthWrite: false, roughness: 0.9,
+    emissive: '#8a6420', emissiveIntensity: 0.35
   })
 
   labelRenderer = new CSS2DRenderer()
