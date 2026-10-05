@@ -245,6 +245,10 @@
                 @mouseleave="highlight = null"
               >{{ s.text }}</li>
             </ol>
+            <blockquote class="cite">
+              「凡铺作自柱头上栌斗口内出一栱或一昂，皆谓之一跳，传至五跳止。」「凡铺作逐跳上安栱谓之计心；若逐跳上不安栱……谓之偷心。」
+              <span>——《营造法式》卷四 · 大木作制度 · 总铺作次序</span>
+            </blockquote>
           </div>
         </template>
 
@@ -406,7 +410,7 @@ const Viewer3D = defineAsyncComponent({
   loadingComponent: LoadingSplash,
   delay: 200,
 })
-import { DEFAULT_PARAMS, puzuoHeight, puzuoDepth, type PuzuoParams } from './bofa/puzuo'
+import { DEFAULT_PARAMS, puzuoHeight, puzuoDepth, angCounts, type PuzuoParams } from './bofa/puzuo'
 import { WIKI } from './bofa/kaogu'
 import { CAI_GRADES } from './core/units'
 import { JOINT_LIST } from './bofa/joints'
@@ -431,28 +435,44 @@ const selected = ref<string | null>(null)
 
 // ── 学堂 ──
 const schoolParams = reactive<PuzuoParams>({ ...DEFAULT_PARAMS, ang: false })
+const ANG_NUM = ['', '单下昂', '双下昂', '三下昂']
+const MIAO_NUM = ['', '单杪', '双杪']
+function puzuoTitle(tiao: number, zhongGong: boolean, jiXin: boolean, ang: boolean): string {
+  const c = ang ? angCounts(tiao) : null
+  const zh = zhongGong ? '重栱' : '单栱'
+  if (c) return `${PUZUO_NAMES[tiao]}铺作${zh}出${MIAO_NUM[c.mang]}${ANG_NUM[c.ang]}`
+  return `${PUZUO_NAMES[tiao]}铺作${zh}${jiXin ? '计心' : '偷心'}造`
+}
 const steps = computed(() => {
-  const list: { layer: number; text: string }[] = [{ layer: 0, text: '普拍枋 · 栌斗 —— 铺作之基' }]
+  const list: { layer: number; text: string }[] = [
+    { layer: 0, text: '普拍枋 · 栌斗 —— 铺作之基' }
+  ]
+  const c = schoolParams.ang ? angCounts(schoolParams.tiao) : null
+  const aAng = c?.ang ?? 0
+  const mAng = c?.mang ?? schoolParams.tiao
   for (let k = 1; k <= schoolParams.tiao; k++) {
-    list.push({ layer: k, text: `第${CN[k]}跳 · 华栱出跳 30 分` })
-    if (schoolParams.jiXin) {
-      const isTop = k === schoolParams.tiao
+    if (k <= mAng) {
+      list.push({ layer: k, text: `第${CN[k]}跳 · 华栱自斗口出跳 30 分` })
+      if (schoolParams.jiXin) {
+        const next = k === mAng ? (c ? '，斗口再出昂' : '，斗口再出华栱') : '，斗口再出华栱'
+        list.push({
+          layer: k + 0.5,
+          text: `跳头 · ${schoolParams.zhongGong ? '瓜子栱 + 慢栱' : '瓜子栱'}${next}`
+        })
+      }
+    } else {
+      const j = k - mAng
       list.push({
-        layer: k + 0.5,
-        text: isTop
-          ? `跳头 · 令栱${schoolParams.shuaTou ? '与耍头' : ''}承橑檐槫`
-          : `跳头 · ${schoolParams.zhongGong ? '瓜子栱 + 慢栱' : '瓜子栱'}`
+        layer: k - 0.5,
+        text: `第${CN[k]}跳 · 第${CN[j]}昂自前跳头斗口斜出${j === aAng ? '，昂头承令栱' : '（昂上不安栱谓之偷心）'}`
       })
     }
   }
-  if (schoolParams.ang) {
-    list.push({ layer: schoolParams.tiao + 0.4, text: '下昂斜出 —— 昂尖斜向下承檐' })
-  }
-  list.push({ layer: schoolParams.tiao + 1, text: '橑檐槫 —— 檐荷至此传回柱身' })
+  if (!c) list.push({ layer: schoolParams.tiao + 1, text: '橑檐槫 —— 檐荷至此传回柱身' })
   return list
 })
 const puzuoName = computed(
-  () => `${PUZUO_NAMES[schoolParams.tiao]}铺作${schoolParams.zhongGong ? '重栱' : '单栱'}${schoolParams.jiXin ? '计心' : '偷心'}造`
+  () => puzuoTitle(schoolParams.tiao, schoolParams.zhongGong, schoolParams.jiXin, schoolParams.ang)
 )
 
 // ── 拼装挑战 ──
@@ -485,7 +505,7 @@ function startGame() {
   game.tutorial = gameDraft.tutorial || gameDraft.guided
   game.guided = gameDraft.guided
   game.guided = gameDraft.guided
-  game.puzuoName = `${PUZUO_NAMES[game.params.tiao]}铺作${game.params.zhongGong ? '重栱' : '单栱'}${game.params.ang ? '昂制' : '杪栱'}计心造`
+  game.puzuoName = puzuoTitle(game.params.tiao, game.params.zhongGong, true, game.params.ang)
   startedAt = Date.now()
   clearInterval(timer)
   timer = setInterval(() => {
@@ -809,6 +829,12 @@ onBeforeUnmount(() => clearInterval(timer))
   border-left: 2px solid var(--line); margin-left: 0.2em; cursor: default; transition: all 0.15s;
 }
 .steps li:hover, .steps li.on { color: var(--amber); border-left-color: var(--amber); background: rgba(217, 164, 65, 0.07); }
+.cite {
+  margin: 0.5rem 0 0; padding: 0.5rem 0.65rem; font-size: 0.72rem; line-height: 1.7;
+  color: rgba(230, 214, 178, 0.62); border-left: 2px solid rgba(217, 164, 65, 0.35);
+  background: rgba(217, 164, 65, 0.05);
+}
+.cite span { display: block; margin-top: 0.25rem; text-align: right; color: rgba(217, 164, 65, 0.75); }
 
 .tray {
   position: absolute; left: 50%; bottom: 1.2rem; transform: translateX(-50%);

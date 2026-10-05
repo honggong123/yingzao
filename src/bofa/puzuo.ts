@@ -22,13 +22,26 @@ export const DEFAULT_PARAMS: PuzuoParams = {
   tiao: 1, zhongGong: false, jiXin: true, shuaTou: true, ang: false
 }
 
+// 杪昂组合依《营造法式》图样定名：五铺作单杪单下昂、六铺作出两杪一昂、
+// 七铺作重栱出双杪双下昂、八铺作出双杪三下昂——杪数 = min(2, 跳数-1)，余跳皆下昂。
+export function angCounts(tiao: number): { mang: number; ang: number } | null {
+  if (tiao < 2) return null
+  const ang = tiao - Math.min(2, tiao - 1)
+  return { mang: tiao - ang, ang }
+}
+
 export function puzuoHeight(p: PuzuoParams): number {
   const stride = p.jiXin ? (p.zhongGong ? 69 : 48) : 27
-  return 12 + (p.tiao - 1) * stride + (p.ang ? 83 : 69)
+  const counts = p.ang ? angCounts(p.tiao) : null
+  if (counts) {
+    // 昂制顶高：末昂昂背(12+(m-1)步+33+12(a-1)) + 斗栱链45分
+    return 12 + (counts.mang - 1) * stride + 78 + 12 * (counts.ang - 1)
+  }
+  return 12 + (p.tiao - 1) * stride + 69
 }
 
 export function puzuoDepth(p: PuzuoParams): number {
-  return p.tiao * 30 + 24
+  return p.tiao * 30 + (p.ang && p.tiao >= 2 ? 48 : 24)
 }
 
 export interface PartInstance {
@@ -110,25 +123,25 @@ export function buildPuzuo(
   dou('ludou', 'ludou', 'z', douMats.a, [0, 0, 0], 0, '栌斗')
 
   // ── 逐跳 ──
+  const counts = params.ang ? angCounts(tiao) : null
+  const aAng = counts?.ang ?? 0 // 昂数
+  const mAng = counts?.mang ?? tiao // 杪层数
+  const slope = 0.3
+
   for (let k = 1; k <= tiao; k++) {
     const y = 12 + (k - 1) * stride
     const zk = TIAO * k
-    const tail = Math.max(TIAO * (k - 1) - 14, -8)
-    const tip = zk + 8 + zoneHua
-    const huaLen = tip - tail
-    const isTop = k === tiao
-    const useAng = params.ang && isTop
 
-    // 跳头交互斗（昂制时下昂由其斗口斜穿而出）
-    dou(`jiaohudou-${k}`, 'jiaohudou', 'x', douMatOf(k), [0, y + 21, zk], k, null)
-
-    if (useAng) {
-      // ── 下昂：昂尾在内上、昂尖在外下，批竹昂尖一体成型 ──
-      // 昂底过跳心处坐于交互斗斗口（欹顶），昂广15分厚10分，斜率约1:3.3
-      const slope = 0.3
-      const bottomRef = y + 21 + 6
+    if (k > mAng) {
+      // ── 昂层（偷心）——《总铺作次序》：“若逐跳上不安栱，而再出跳或出昂者谓之偷心”。
+      // 昂尾坐于前一跳头交互斗口（昂底在其欹顶），昂背跳头再设交互斗承上一层昂；
+      // 昂广15分、斜率约1:3.3，批竹昂尖一体成型。
+      const j = k - mAng
+      const zs = TIAO * (k - 1)
+      const seatS = 12 + (mAng - 1) * stride + 27 + 12 * (j - 1) // 尾端斗口欹顶
+      const bottomRef = seatS - TIAO * slope // 昂底过本跳心处
       const angTipZ = zk + 44
-      const angTailZ = Math.max(zk - 58, -10)
+      const angTailZ = j === 1 ? Math.max(zs - 58, -10) : zs - 24 // 尾端入柱头枋后（穿枋）
       const ycRef = bottomRef + 7.5
       const ycTip = ycRef - (angTipZ - zk) * slope
       const ycTail = ycRef + (zk - angTailZ) * slope
@@ -152,52 +165,49 @@ export function buildPuzuo(
       angGroup.add(angMesh)
       angGroup.position.set(0, (ycTail + ycTip) / 2, (angTailZ + angTipZ) / 2)
       angGroup.rotation.x = -angle // 头低尾高
-      angGroup.userData.partKey = 'xia-ang'
-      angMesh.userData.partKey = 'xia-ang'
+      const angKey = `xia-ang-${j}`
+      angGroup.userData.partKey = angKey
+      angMesh.userData.partKey = angKey
       group.add(angGroup)
       parts.push({
-        key: 'xia-ang', mesh: angGroup as unknown as THREE.Mesh, layer: k + 0.5,
-        base: angGroup.position.clone(), explodeZ: 30, label: '下昂', order: 0
+        key: angKey, mesh: angGroup as unknown as THREE.Mesh, layer: k - 0.5,
+        base: angGroup.position.clone(), explodeZ: 30,
+        label: j === 1 ? '下昂' : j === 2 ? '下昂二' : '下昂三', order: 0
       })
 
-      // 跳头诸件依次坐于昂背：交互斗 → 令栱 →（耍头）→ 橑檐槫
+      // 昂背跳头交互斗；（最上昂）其斗口承令栱、耍头，上安橑檐槫
       const backAtZk = bottomRef + 15 // 昂背过跳心处（昂广15）
-      dou(`ang-dou-${k}`, 'jiaohudou', 'x', douMatOf(k), [0, backAtZk, zk], k + 0.5, null)
-      const ling = createGong('ling', gongMatOf(k))
-      add('linggong', ling, [0, backAtZk + 6 + 7.5, zk], k + 0.5, 0, '令栱')
-      addDouOn('ling', k, backAtZk + 21, zk, 72, k + 0.55)
-      if (shuaTou) {
-        const stTail = zk - 14
-        const stTip = zk + 22
-        const st = createGong('shuatou', gongMatOf(k + 1), { len: stTip - stTail })
-        toZAxis(st)
-        add('shuatou', st, [0, backAtZk + 6 + 10.5, (stTail + stTip) / 2], k + 0.5, 22, '耍头')
+      dou(`ang-dou-${k}`, 'jiaohudou', 'x', douMatOf(k), [0, backAtZk, zk], k - 0.5, null)
+      if (j === aAng) {
+        const ling = createGong('ling', gongMatOf(k))
+        add('linggong', ling, [0, backAtZk + 6 + 7.5, zk], k - 0.5, 0, '令栱')
+        addDouOn('ling', k, backAtZk + 21, zk, 72, k + 0.55)
+        if (shuaTou) {
+          const stTail = zk - 14
+          const stTip = zk + 22
+          const st = createGong('shuatou', gongMatOf(k + 1), { len: stTip - stTail })
+          toZAxis(st)
+          add('shuatou', st, [0, backAtZk + 6 + 10.5, (stTail + stTip) / 2], k - 0.5, 22, '耍头')
+        }
+        const tuanGeo = new THREE.CylinderGeometry(7, 7, 80, 24)
+        const tuan = new THREE.Mesh(tuanGeo, gongMats.hua)
+        tuan.rotation.z = Math.PI / 2
+        tuan.castShadow = tuan.receiveShadow = true
+        add('liaoyan', tuan, [0, backAtZk + 21 + 17, zk], k + 1, 30, '橑檐槫')
       }
-      const tuanGeo = new THREE.CylinderGeometry(7, 7, 80, 24)
-      const tuan = new THREE.Mesh(tuanGeo, gongMats.hua)
-      tuan.rotation.z = Math.PI / 2
-      tuan.castShadow = tuan.receiveShadow = true
-      add('liaoyan', tuan, [0, backAtZk + 21 + 17, zk], k + 1, 30, '橑檐槫')
     } else {
-      // 华栱 k
+      // ── 杪层：跳头交互斗承下一跳出跳构件（华栱或昂）──
+      dou(`jiaohudou-${k}`, 'jiaohudou', 'x', douMatOf(k), [0, y + 21, zk], k, null)
+
+      const tail = Math.max(TIAO * (k - 1) - 14, -8)
+      const tip = zk + 8 + zoneHua
+      const huaLen = tip - tail
       const hua = createGong('huagong', gongMatOf(k), { len: huaLen, juansha: 'head' })
       toZAxis(hua)
       add(`huagong-${k}`, hua, [0, y + 10.5, (tail + tip) / 2], k, 22,
         k === 1 ? '华栱' : `华栱${k === 2 ? '二' : k === 3 ? '三' : k === 4 ? '四' : '五'}`)
 
-      if (!isTop) {
-        if (jiXin) {
-          // 瓜子栱（跳头横栱，其上齐心斗开口顺 z 纳上层华栱）
-          const gz = createGong('guazi', gongMatOf(k))
-          add(`guazi-${k}`, gz, [0, y + 27 + 7.5, zk], k + 0.5, 0, k === 1 ? '瓜子栱' : null)
-          addDouOn('guazi', k, y + 42, zk, 62, k + 0.5, 'z')
-          if (zhongGong) {
-            const mn = createGong('man', gongMatOf(k))
-            add(`man-tiao-${k}`, mn, [0, y + 48 + 7.5, zk], k + 0.5, 0, k === 1 ? '慢栱' : null)
-            addDouOn('man-tiao', k, y + 63, zk, 92, k + 0.5, 'z')
-          }
-        }
-      } else {
+      if (k === tiao && !counts) {
         // 最上跳头：令栱 + 耍头 + 橑檐槫
         const ling = createGong('ling', gongMatOf(k))
         add('linggong', ling, [0, y + 27 + 7.5, zk], k + 0.5, 0, '令栱')
@@ -216,6 +226,18 @@ export function buildPuzuo(
         tuan.rotation.z = Math.PI / 2
         tuan.castShadow = tuan.receiveShadow = true
         add('liaoyan', tuan, [0, y + 48 + 10.5, zk], k + 1, 30, '橑檐槫')
+      } else {
+        // 跳头横栱（计心）：瓜子栱与昂（或上层华栱）于跳头斗口十字相交
+        if (jiXin) {
+          const gz = createGong('guazi', gongMatOf(k))
+          add(`guazi-${k}`, gz, [0, y + 27 + 7.5, zk], k + 0.5, 0, k === 1 ? '瓜子栱' : null)
+          addDouOn('guazi', k, y + 42, zk, 62, k + 0.5, 'z')
+          if (zhongGong) {
+            const mn = createGong('man', gongMatOf(k))
+            add(`man-tiao-${k}`, mn, [0, y + 48 + 7.5, zk], k + 0.5, 0, k === 1 ? '慢栱' : null)
+            addDouOn('man-tiao', k, y + 63, zk, 92, k + 0.5, 'z')
+          }
+        }
       }
     }
   }
@@ -237,7 +259,7 @@ export function buildPuzuo(
   fang.castShadow = fang.receiveShadow = true
   add('zhutoufang', fang, [0, fangBottom + 7.5, 0], 1.6, 0, '柱头枋')
 
-  const height = 12 + (tiao - 1) * stride + (params.ang ? 83 : 69)
+  const height = puzuoHeight(params)
 
   for (const p of parts) {
     const rank = TYPE_RANK[p.key.split('-')[0]] ?? 5

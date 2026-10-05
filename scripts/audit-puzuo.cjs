@@ -10705,6 +10705,19 @@ function makeGongMaterials() {
 }
 
 // src/bofa/puzuo.ts
+function angCounts(tiao) {
+  if (tiao < 2) return null;
+  const ang = tiao - Math.min(2, tiao - 1);
+  return { mang: tiao - ang, ang };
+}
+function puzuoHeight(p) {
+  const stride = p.jiXin ? p.zhongGong ? 69 : 48 : 27;
+  const counts = p.ang ? angCounts(p.tiao) : null;
+  if (counts) {
+    return 12 + (counts.mang - 1) * stride + 78 + 12 * (counts.ang - 1);
+  }
+  return 12 + (p.tiao - 1) * stride + 69;
+}
 var TYPE_RANK = {
   puaipai: 0,
   ludou: 1,
@@ -10757,20 +10770,20 @@ function buildPuzuo(params, opts = {}) {
     add("puaipai", paipai, [0, -6, 0], 0, 0, "\u666E\u62CD\u678B");
   }
   dou("ludou", "ludou", "z", douMats.a, [0, 0, 0], 0, "\u680C\u6597");
+  const counts = params.ang ? angCounts(tiao) : null;
+  const aAng = counts?.ang ?? 0;
+  const mAng = counts?.mang ?? tiao;
+  const slope = 0.3;
   for (let k = 1; k <= tiao; k++) {
     const y = 12 + (k - 1) * stride;
     const zk = TIAO * k;
-    const tail = Math.max(TIAO * (k - 1) - 14, -8);
-    const tip = zk + 8 + zoneHua;
-    const huaLen = tip - tail;
-    const isTop = k === tiao;
-    const useAng = params.ang && isTop;
-    dou(`jiaohudou-${k}`, "jiaohudou", "x", douMatOf(k), [0, y + 21, zk], k, null);
-    if (useAng) {
-      const slope = 0.3;
-      const bottomRef = y + 21 + 6;
+    if (k > mAng) {
+      const j = k - mAng;
+      const zs = TIAO * (k - 1);
+      const seatS = 12 + (mAng - 1) * stride + 27 + 12 * (j - 1);
+      const bottomRef = seatS - TIAO * slope;
       const angTipZ = zk + 44;
-      const angTailZ = Math.max(zk - 58, -10);
+      const angTailZ = j === 1 ? Math.max(zs - 58, -10) : zs - 24;
       const ycRef = bottomRef + 7.5;
       const ycTip = ycRef - (angTipZ - zk) * slope;
       const ycTail = ycRef + (zk - angTailZ) * slope;
@@ -10792,36 +10805,43 @@ function buildPuzuo(params, opts = {}) {
       angGroup.add(angMesh);
       angGroup.position.set(0, (ycTail + ycTip) / 2, (angTailZ + angTipZ) / 2);
       angGroup.rotation.x = -angle;
-      angGroup.userData.partKey = "xia-ang";
-      angMesh.userData.partKey = "xia-ang";
+      const angKey = `xia-ang-${j}`;
+      angGroup.userData.partKey = angKey;
+      angMesh.userData.partKey = angKey;
       group.add(angGroup);
       parts.push({
-        key: "xia-ang",
+        key: angKey,
         mesh: angGroup,
-        layer: k + 0.5,
+        layer: k - 0.5,
         base: angGroup.position.clone(),
         explodeZ: 30,
-        label: "\u4E0B\u6602",
+        label: j === 1 ? "\u4E0B\u6602" : j === 2 ? "\u4E0B\u6602\u4E8C" : "\u4E0B\u6602\u4E09",
         order: 0
       });
       const backAtZk = bottomRef + 15;
-      dou(`ang-dou-${k}`, "jiaohudou", "x", douMatOf(k), [0, backAtZk, zk], k + 0.5, null);
-      const ling = createGong("ling", gongMatOf(k));
-      add("linggong", ling, [0, backAtZk + 6 + 7.5, zk], k + 0.5, 0, "\u4EE4\u6831");
-      addDouOn("ling", k, backAtZk + 21, zk, 72, k + 0.55);
-      if (shuaTou) {
-        const stTail = zk - 14;
-        const stTip = zk + 22;
-        const st = createGong("shuatou", gongMatOf(k + 1), { len: stTip - stTail });
-        toZAxis(st);
-        add("shuatou", st, [0, backAtZk + 6 + 10.5, (stTail + stTip) / 2], k + 0.5, 22, "\u800D\u5934");
+      dou(`ang-dou-${k}`, "jiaohudou", "x", douMatOf(k), [0, backAtZk, zk], k - 0.5, null);
+      if (j === aAng) {
+        const ling = createGong("ling", gongMatOf(k));
+        add("linggong", ling, [0, backAtZk + 6 + 7.5, zk], k - 0.5, 0, "\u4EE4\u6831");
+        addDouOn("ling", k, backAtZk + 21, zk, 72, k + 0.55);
+        if (shuaTou) {
+          const stTail = zk - 14;
+          const stTip = zk + 22;
+          const st = createGong("shuatou", gongMatOf(k + 1), { len: stTip - stTail });
+          toZAxis(st);
+          add("shuatou", st, [0, backAtZk + 6 + 10.5, (stTail + stTip) / 2], k - 0.5, 22, "\u800D\u5934");
+        }
+        const tuanGeo = new CylinderGeometry(7, 7, 80, 24);
+        const tuan = new Mesh(tuanGeo, gongMats.hua);
+        tuan.rotation.z = Math.PI / 2;
+        tuan.castShadow = tuan.receiveShadow = true;
+        add("liaoyan", tuan, [0, backAtZk + 21 + 17, zk], k + 1, 30, "\u6A51\u6A90\u69EB");
       }
-      const tuanGeo = new CylinderGeometry(7, 7, 80, 24);
-      const tuan = new Mesh(tuanGeo, gongMats.hua);
-      tuan.rotation.z = Math.PI / 2;
-      tuan.castShadow = tuan.receiveShadow = true;
-      add("liaoyan", tuan, [0, backAtZk + 21 + 17, zk], k + 1, 30, "\u6A51\u6A90\u69EB");
     } else {
+      dou(`jiaohudou-${k}`, "jiaohudou", "x", douMatOf(k), [0, y + 21, zk], k, null);
+      const tail = Math.max(TIAO * (k - 1) - 14, -8);
+      const tip = zk + 8 + zoneHua;
+      const huaLen = tip - tail;
       const hua = createGong("huagong", gongMatOf(k), { len: huaLen, juansha: "head" });
       toZAxis(hua);
       add(
@@ -10832,18 +10852,7 @@ function buildPuzuo(params, opts = {}) {
         22,
         k === 1 ? "\u534E\u6831" : `\u534E\u6831${k === 2 ? "\u4E8C" : k === 3 ? "\u4E09" : k === 4 ? "\u56DB" : "\u4E94"}`
       );
-      if (!isTop) {
-        if (jiXin) {
-          const gz = createGong("guazi", gongMatOf(k));
-          add(`guazi-${k}`, gz, [0, y + 27 + 7.5, zk], k + 0.5, 0, k === 1 ? "\u74DC\u5B50\u6831" : null);
-          addDouOn("guazi", k, y + 42, zk, 62, k + 0.5, "z");
-          if (zhongGong) {
-            const mn = createGong("man", gongMatOf(k));
-            add(`man-tiao-${k}`, mn, [0, y + 48 + 7.5, zk], k + 0.5, 0, k === 1 ? "\u6162\u6831" : null);
-            addDouOn("man-tiao", k, y + 63, zk, 92, k + 0.5, "z");
-          }
-        }
-      } else {
+      if (k === tiao && !counts) {
         const ling = createGong("ling", gongMatOf(k));
         add("linggong", ling, [0, y + 27 + 7.5, zk], k + 0.5, 0, "\u4EE4\u6831");
         addDouOn("ling", k, y + 42, zk, 72);
@@ -10859,6 +10868,17 @@ function buildPuzuo(params, opts = {}) {
         tuan.rotation.z = Math.PI / 2;
         tuan.castShadow = tuan.receiveShadow = true;
         add("liaoyan", tuan, [0, y + 48 + 10.5, zk], k + 1, 30, "\u6A51\u6A90\u69EB");
+      } else {
+        if (jiXin) {
+          const gz = createGong("guazi", gongMatOf(k));
+          add(`guazi-${k}`, gz, [0, y + 27 + 7.5, zk], k + 0.5, 0, k === 1 ? "\u74DC\u5B50\u6831" : null);
+          addDouOn("guazi", k, y + 42, zk, 62, k + 0.5, "z");
+          if (zhongGong) {
+            const mn = createGong("man", gongMatOf(k));
+            add(`man-tiao-${k}`, mn, [0, y + 48 + 7.5, zk], k + 0.5, 0, k === 1 ? "\u6162\u6831" : null);
+            addDouOn("man-tiao", k, y + 63, zk, 92, k + 0.5, "z");
+          }
+        }
       }
     }
   }
@@ -10876,7 +10896,7 @@ function buildPuzuo(params, opts = {}) {
   const fang = new Mesh(fangGeo, fangMat);
   fang.castShadow = fang.receiveShadow = true;
   add("zhutoufang", fang, [0, fangBottom + 7.5, 0], 1.6, 0, "\u67F1\u5934\u678B");
-  const height = 12 + (tiao - 1) * stride + (params.ang ? 83 : 69);
+  const height = puzuoHeight(params);
   for (const p of parts) {
     const rank = TYPE_RANK[p.key.split("-")[0]] ?? 5;
     p.order = p.layer * 100 + rank;
@@ -10937,9 +10957,12 @@ function audit(name, params) {
   }
   m.dispose();
 }
-audit("\u516D\u94FA\u4F5C\u5355\u6831\u8BA1\u5FC3\uFF08\u6E38\u620F\u9ED8\u8BA4\u516D\uFF09", { tiao: 3, zhongGong: false, jiXin: true, shuaTou: true, ang: false });
-audit("\u516D\u94FA\u4F5C\u5355\u6831\u6602\u5236", { tiao: 3, zhongGong: false, jiXin: true, shuaTou: true, ang: true });
-audit("\u4E03\u94FA\u4F5C\u91CD\u6831\u8BA1\u5FC3", { tiao: 4, zhongGong: true, jiXin: true, shuaTou: true, ang: false });
+audit("\u516D\u94FA\u4F5C\u5355\u6831\u8BA1\u5FC3\uFF08\u676A\u5236\uFF09", { tiao: 3, zhongGong: false, jiXin: true, shuaTou: true, ang: false });
+audit("\u516D\u94FA\u4F5C\u51FA\u4E24\u676A\u4E00\u6602\uFF08\u6602\u5236\uFF09", { tiao: 3, zhongGong: false, jiXin: true, shuaTou: true, ang: true });
+audit("\u4E03\u94FA\u4F5C\u91CD\u6831\u8BA1\u5FC3\uFF08\u676A\u5236\uFF09", { tiao: 4, zhongGong: true, jiXin: true, shuaTou: true, ang: false });
+audit("\u4E03\u94FA\u4F5C\u91CD\u6831\u51FA\u53CC\u676A\u53CC\u4E0B\u6602", { tiao: 4, zhongGong: true, jiXin: true, shuaTou: true, ang: true });
+audit("\u516B\u94FA\u4F5C\u51FA\u53CC\u676A\u4E09\u4E0B\u6602", { tiao: 5, zhongGong: true, jiXin: true, shuaTou: true, ang: true });
+audit("\u4E94\u94FA\u4F5C\u5355\u676A\u5355\u4E0B\u6602", { tiao: 2, zhongGong: false, jiXin: true, shuaTou: true, ang: true });
 /*! Bundled license information:
 
 three/build/three.module.js:

@@ -40,6 +40,9 @@ function audit(name: string, params: PuzuoParams) {
   m.dispose()
 }
 
-audit('六铺作单栱计心（游戏默认六）', { tiao: 3, zhongGong: false, jiXin: true, shuaTou: true, ang: false })
-audit('六铺作单栱昂制', { tiao: 3, zhongGong: false, jiXin: true, shuaTou: true, ang: true })
-audit('七铺作重栱计心', { tiao: 4, zhongGong: true, jiXin: true, shuaTou: true, ang: false })
+audit('六铺作单栱计心（杪制）', { tiao: 3, zhongGong: false, jiXin: true, shuaTou: true, ang: false })
+audit('六铺作出两杪一昂（昂制）', { tiao: 3, zhongGong: false, jiXin: true, shuaTou: true, ang: true })
+audit('七铺作重栱计心（杪制）', { tiao: 4, zhongGong: true, jiXin: true, shuaTou: true, ang: false })
+audit('七铺作重栱出双杪双下昂', { tiao: 4, zhongGong: true, jiXin: true, shuaTou: true, ang: true })
+audit('八铺作出双杪三下昂', { tiao: 5, zhongGong: true, jiXin: true, shuaTou: true, ang: true })
+audit('五铺作单杪单下昂', { tiao: 2, zhongGong: false, jiXin: true, shuaTou: true, ang: true })

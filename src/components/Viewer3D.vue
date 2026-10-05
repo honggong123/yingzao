@@ -100,6 +100,7 @@ const PART_NAMES: Record<string, string> = {
 }
 
 function nameOf(key: string): string {
+  if (/^ang-dou/.test(key)) return '交互斗'
   if (/-dou-[ns]$/.test(key) || key.startsWith('sandou')) return '散斗'
   if (/-dou-c$/.test(key) || key.startsWith('qixindou')) return '齐心斗'
   const base = key.split('-')[0]
@@ -107,6 +108,7 @@ function nameOf(key: string): string {
 }
 
 function wikiKeyOf(key: string): string {
+  if (/^ang-dou/.test(key)) return 'jiaohidou'
   if (/-dou-[ns]$/.test(key) || key.startsWith('sandou')) return 'sandou'
   if (/-dou-c$/.test(key) || key.startsWith('qixindou')) return 'qixindou'
   const base = key.split('-')[0]
@@ -403,7 +405,7 @@ function rebuild() {
     // 装配次序写给玩法层
     emit(
       'sequence',
-      puzuo.sequence.map((p) => ({ key: p.key, name: nameOf(p.key), wikiKey: wikiKeyOf(p.key) }))
+      puzuo.sequence.map((p) => ({ key: p.key, name: p.label ?? nameOf(p.key), wikiKey: wikiKeyOf(p.key) }))
     )
     // 次序写入 order 的百分位便于落位判定
     applyPartMaterials()
