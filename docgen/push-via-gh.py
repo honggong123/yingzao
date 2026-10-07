@@ -121,7 +121,7 @@ else:
     raise RuntimeError("tree 创建失败")
 
 commit_payload = {
-    "message": "《营造》v0.8.1 —— 次序复核无错 + 幽灵件可见度修复（0.38+微发光）：未拼构件读作连续待装骨架",
+    "message": "《营造》v0.8.2 —— 构件标注重叠修复：按构件族分锚点 + 屏幕空间避让，任意视角不再叠字",
     "tree": tree["sha"],
     "parents": [head_sha],
 }

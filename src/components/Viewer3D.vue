@@ -415,6 +415,13 @@ function rebuild() {
 
   // 标注（拼装模块只标鬼影，保持轻）
   if (props.module !== 'game') {
+    // 锚点偏移：十字相交的构件（华栱×泥道栱等）几何中心重叠，
+    // 标注按构件族分散——墙列横栱拉向 x 两端，出跳件拉向跳头，任意视角不再叠字
+    const LABEL_ANCHOR: Record<string, [number, number, number]> = {
+      nidao: [26, 0, 0], guazi: [-26, 0, 0], man: [30, 0, 0], zhutoufang: [-34, 0, 0],
+      puaipai: [36, 0, 0], huagong: [0, 0, 14], linggong: [0, 0, 12],
+      shuatou: [0, 0, 18], liaoyan: [0, 0, 22], xia: [0, 0, 18]
+    }
     let li = 0
     for (const p of puzuo.parts) {
       if (!p.label) continue
@@ -429,7 +436,8 @@ function rebuild() {
       const obj = new CSS2DObject(el)
       const box = new THREE.Box3().setFromObject(p.mesh)
       const stagger = (li++ % 3) * 7
-      obj.position.set(0, box.max.y - p.mesh.position.y + 3 + stagger, 0)
+      const anchor = LABEL_ANCHOR[p.key.split('-')[0]] ?? [0, 0, 0]
+      obj.position.set(anchor[0], box.max.y - p.mesh.position.y + 3 + stagger, anchor[2])
       obj.center.set(0.5, 0)
       p.mesh.add(obj)
       labelEls.push({ obj, el })
@@ -440,6 +448,46 @@ function rebuild() {
   applyPartMaterials()
   frameModel(firstBuild ? false : true)
   firstBuild = false
+}
+
+// 屏幕空间避让：标注相互重叠时向下推开（每帧执行，标注数少，开销可忽略）
+function declutterLabels() {
+  if (!labelEls.length || !host.value) return
+  const w = host.value.clientWidth
+  const h = host.value.clientHeight
+  const v = new THREE.Vector3()
+  const items: { el: HTMLDivElement; cx: number; bottom: number; w: number; h: number }[] = []
+  for (const { obj, el } of labelEls) {
+    el.style.marginTop = '0px'
+    obj.getWorldPosition(v)
+    v.project(stage!.camera)
+    if (v.z > 1) continue // 在相机身后
+    items.push({
+      el,
+      cx: (v.x * 0.5 + 0.5) * w,
+      bottom: (-v.y * 0.5 + 0.5) * h,
+      w: el.offsetWidth || 64,
+      h: el.offsetHeight || 24
+    })
+  }
+  items.sort((a, b) => a.bottom - b.bottom)
+  const placed: { cx: number; top: number; w: number; h: number }[] = []
+  for (const it of items) {
+    const top = it.bottom - it.h
+    let dy = 0
+    for (let guard = 0; guard < 12; guard++) {
+      const clash = placed.find(
+        (b) =>
+          Math.abs(it.cx - b.cx) < (it.w + b.w) / 2 + 8 &&
+          top + dy < b.top + b.h + 6 &&
+          top + dy + it.h > b.top - 6
+      )
+      if (!clash) break
+      dy = clash.top + clash.h + 6 - top
+    }
+    if (dy > 0) it.el.style.marginTop = `${Math.round(dy)}px`
+    placed.push({ cx: it.cx, top: top + dy, w: it.w, h: it.h })
+  }
 }
 
 function pick(ev: PointerEvent) {
@@ -493,7 +541,10 @@ onMounted(() => {
   labelRenderer.domElement.style.pointerEvents = 'none'
   labelLayer.value!.appendChild(labelRenderer.domElement)
   stage.onTick((dt) => {
-    if (labelRenderer) labelRenderer.render(stage!.scene, stage!.camera)
+    if (labelRenderer) {
+      labelRenderer.render(stage!.scene, stage!.camera)
+      declutterLabels()
+    }
     if (props.module === 'quake' && quake) {
       quake.tick(dt)
       quake.apply()
