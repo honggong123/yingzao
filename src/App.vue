@@ -48,6 +48,7 @@
         :joint-id="jointId"
         :joint-t="jointT"
         :quake-opts="quakeOpts"
+        :all-labels="module === 'school' ? schoolAllLabels : false"
         @select="onSelect"
         @sequence="onSequence"
         @joint-info="jointMeta = $event"
@@ -228,6 +229,10 @@
           <div class="sec row">
             <span class="sec-label">昂制（下昂）</span>
             <button class="switch" :class="{ on: schoolParams.ang }" @click="schoolParams.ang = !schoolParams.ang"><i></i></button>
+          </div>
+          <div class="sec row">
+            <span class="sec-label">全部标注</span>
+            <button class="switch" :class="{ on: schoolAllLabels }" @click="schoolAllLabels = !schoolAllLabels"><i></i></button>
           </div>
           <div class="sec">
             <span class="sec-label">拆解 · {{ Math.round(explode * 100) }}%</span>
@@ -435,6 +440,7 @@ const selected = ref<string | null>(null)
 
 // ── 学堂 ──
 const schoolParams = reactive<PuzuoParams>({ ...DEFAULT_PARAMS, ang: false })
+const schoolAllLabels = ref(false)
 const ANG_NUM = ['', '单下昂', '双下昂', '三下昂']
 const MIAO_NUM = ['', '单杪', '双杪']
 function puzuoTitle(tiao: number, zhongGong: boolean, jiXin: boolean, ang: boolean): string {

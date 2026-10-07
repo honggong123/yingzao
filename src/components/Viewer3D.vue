@@ -51,6 +51,7 @@ const props = defineProps<{
   jointId?: string
   jointT?: number
   quakeOpts?: QuakeOptions
+  allLabels?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -86,6 +87,9 @@ let pointer: THREE.Vector2
 let highlightMat: THREE.MeshStandardMaterial
 let selectMat: THREE.MeshStandardMaterial
 let ghostMat: THREE.MeshStandardMaterial
+let hoverMat: THREE.MeshStandardMaterial
+let hoverChip: HTMLDivElement | null = null
+let hoveredKey: string | null = null
 let selectedKey: string | null = null
 let firstBuild = true
 let desiredPos: THREE.Vector3 | null = null
@@ -164,10 +168,12 @@ function applyPartMaterials() {
   for (const p of puzuo.parts) {
     const orig = p.mesh.userData.origMat as THREE.Material
     if (isGame) {
-      // 拼装中：已落位的显示本体，其余为鬼影
+      // 拼装中：已落位的显示本体，其余为鬼影（悬停只出名牌，不改材质语义）
       p.mesh.material = placedKeys!.has(p.key) ? orig : ghostMat
     } else if (selectedKey && p.key === selectedKey) {
       p.mesh.material = selectMat
+    } else if (hoveredKey && p.key === hoveredKey) {
+      p.mesh.material = hoverMat
     } else if (props.highlight != null && Math.abs(p.layer - props.highlight) < 0.25) {
       p.mesh.material = highlightMat
     } else {
@@ -356,6 +362,8 @@ watch(
 
 function rebuild() {
   if (!stage) return
+  hoveredKey = null
+  if (hoverChip) hoverChip.style.display = 'none'
   disposeContent()
 
   const params = props.params ?? DEFAULT_PARAMS
@@ -420,14 +428,35 @@ function rebuild() {
     const LABEL_ANCHOR: Record<string, [number, number, number]> = {
       nidao: [26, 0, 0], guazi: [-26, 0, 0], man: [30, 0, 0], zhutoufang: [-34, 0, 0],
       puaipai: [36, 0, 0], huagong: [0, 0, 14], linggong: [0, 0, 12],
-      shuatou: [0, 0, 18], liaoyan: [0, 0, 22], xia: [0, 0, 18]
+      shuatou: [0, 0, 18], liaoyan: [0, 0, 22], xia: [0, 0, 18],
+      jiaohudou: [0, 0, 10], sandou: [-20, 0, -6], qixindou: [16, 0, -8]
     }
+    // 「全部标注」：交互斗/散斗/齐心斗等未命名小件，每族标出第一件
+    // （斗类键名是 ling-dou-n / nidao-dou-c 这类前缀式，需按模式取族）
+    const familyOf = (key: string): string => {
+      if (/^ang-dou/.test(key)) return 'jiaohudou'
+      if (/-dou-[ns]$/.test(key) || key.startsWith('sandou')) return 'sandou'
+      if (/-dou-c$/.test(key) || key.startsWith('qixindou')) return 'qixindou'
+      return key.split('-')[0]
+    }
+    const EXTRA_FAMILIES: Record<string, string> = { jiaohudou: '交互斗', sandou: '散斗', qixindou: '齐心斗' }
+    const famDone = new Set<string>()
     let li = 0
     for (const p of puzuo.parts) {
-      if (!p.label) continue
+      const base = p.key.split('-')[0]
+      let text = p.label
+      const fam = familyOf(p.key)
+      if (!text && props.allLabels) {
+        const famName = EXTRA_FAMILIES[fam]
+        if (famName && !famDone.has(fam)) {
+          text = famName
+          famDone.add(fam)
+        }
+      }
+      if (!text) continue
       const el = document.createElement('div')
       el.className = 'part-label'
-      el.textContent = p.label
+      el.textContent = text
       el.addEventListener('click', () => {
         selectedKey = p.key
         applyPartMaterials()
@@ -436,7 +465,7 @@ function rebuild() {
       const obj = new CSS2DObject(el)
       const box = new THREE.Box3().setFromObject(p.mesh)
       const stagger = (li++ % 3) * 7
-      const anchor = LABEL_ANCHOR[p.key.split('-')[0]] ?? [0, 0, 0]
+      const anchor = LABEL_ANCHOR[base] ?? LABEL_ANCHOR[fam] ?? [0, 0, 0]
       obj.position.set(anchor[0], box.max.y - p.mesh.position.y + 3 + stagger, anchor[2])
       obj.center.set(0.5, 0)
       p.mesh.add(obj)
@@ -490,6 +519,43 @@ function declutterLabels() {
   }
 }
 
+// 悬停识件：任意模块悬停构件即出名称牌（拼装/游戏中为只读提示，不改材质语义）
+function onHover(ev: PointerEvent) {
+  if (!puzuo || !stage || !canvas.value || !labelLayer.value || !hoverChip) return
+  const r = canvas.value.getBoundingClientRect()
+  pointer.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1)
+  raycaster.setFromCamera(pointer, stage.camera)
+  const hits = raycaster.intersectObjects(puzuo.group.children, true)
+  let key: string | null = null
+  for (const h of hits) {
+    let o: THREE.Object3D | null = h.object
+    while (o && !o.userData.partKey) o = o.parent
+    if (o) { key = o.userData.partKey as string; break }
+  }
+  if (key !== hoveredKey) {
+    hoveredKey = key
+    if (props.module !== 'game') applyPartMaterials()
+  }
+  if (key) {
+    const lr = labelLayer.value.getBoundingClientRect()
+    hoverChip.textContent = nameOf(key)
+    hoverChip.style.left = `${ev.clientX - lr.left + 14}px`
+    hoverChip.style.top = `${ev.clientY - lr.top - 12}px`
+    hoverChip.style.display = 'block'
+    canvas.value.style.cursor = 'pointer'
+  } else {
+    hoverChip.style.display = 'none'
+    canvas.value.style.cursor = ''
+  }
+}
+
+function onHoverLeave() {
+  hoveredKey = null
+  if (hoverChip) hoverChip.style.display = 'none'
+  if (canvas.value) canvas.value.style.cursor = ''
+  if (props.module !== 'game') applyPartMaterials()
+}
+
 function pick(ev: PointerEvent) {
   if (!stage) return
   stopFraming()
@@ -522,10 +588,18 @@ onMounted(() => {
   raycaster = new THREE.Raycaster()
   pointer = new THREE.Vector2()
   canvas.value!.addEventListener('pointerdown', pick)
+  canvas.value!.addEventListener('pointermove', onHover)
+  canvas.value!.addEventListener('pointerleave', onHoverLeave)
 
   highlightMat = new THREE.MeshStandardMaterial({
     color: '#8a6a2f', emissive: '#d9a441', emissiveIntensity: 0.55, roughness: 0.6
   })
+  hoverMat = new THREE.MeshStandardMaterial({
+    color: '#b08a3e', emissive: '#d9a441', emissiveIntensity: 0.3, roughness: 0.7
+  })
+  hoverChip = document.createElement('div')
+  hoverChip.className = 'hover-chip'
+  labelLayer.value!.appendChild(hoverChip)
   selectMat = new THREE.MeshStandardMaterial({
     color: '#a4762a', emissive: '#e8b454', emissiveIntensity: 0.8, roughness: 0.5
   })
@@ -667,12 +741,16 @@ watch(() => props.grade, () => {
 })
 watch(() => props.explode, applyExplode)
 watch(() => props.highlight, applyPartMaterials)
+watch(() => props.allLabels, rebuild)
 
 onBeforeUnmount(() => {
   clearLabels()
   highlightMat?.dispose()
   selectMat?.dispose()
   ghostMat?.dispose()
+  hoverMat?.dispose()
+  hoverChip?.remove()
+  hoverChip = null
   stage?.dispose()
   disposeContent()
 })
@@ -800,5 +878,22 @@ canvas {
 .part-label:hover {
   border-color: rgba(217, 164, 65, 0.9);
   color: #f5d9a4;
+}
+/* 悬停名称牌（运行时创建，须在非 scoped 块） */
+.hover-chip {
+  position: absolute;
+  display: none;
+  padding: 2px 10px;
+  font-family: var(--serif);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  color: #f5d9a4;
+  background: rgba(24, 16, 8, 0.92);
+  border: 1px solid rgba(217, 164, 65, 0.85);
+  border-radius: 2px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
 }
 </style>
