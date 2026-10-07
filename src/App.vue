@@ -9,7 +9,7 @@
           <span>宋《营造法式》斗栱榫卯 · 可拆可拼可改可造</span>
         </div>
       </div>
-      <nav class="modules">
+      <nav v-show="navOpen" class="modules">
         <button
           v-for="m in MODULES"
           :key="m.id"
@@ -19,7 +19,7 @@
           @click="switchModule(m.id)"
         >{{ m.label }}</button>
       </nav>
-      <div class="user-area">
+      <div v-show="navOpen" class="user-area">
         <button
           class="module sound-toggle"
           :title="soundEnabled ? '关闭音效' : '开启音效'"
@@ -35,6 +35,9 @@
         <span class="user-chip" :title="'已登录：' + user">◈ {{ user }}</span>
         <button class="module" @click="logoutUser">退出</button>
       </div>
+      <button class="module nav-toggle" :title="navOpen ? '收起功能栏' : '展开功能栏'" @click="navOpen = !navOpen">
+        {{ navOpen ? '✕ 收起' : '☰ 功能' }}
+      </button>
     </header>
 
     <main class="stage-wrap">
@@ -178,6 +181,7 @@
           </div>
           <template v-if="wiki">
             <p class="dims">{{ wiki.dims }}</p>
+            <p class="place">📍 {{ wiki.place }}</p>
             <p class="role">{{ wiki.role }}</p>
             <div class="src">
               <span class="src-label">出处</span>
@@ -194,6 +198,22 @@
               层距的来历：单栱计心每层 48 分 = 足材 21 + 斗口 6 + 瓜子栱 15 + 斗口 6——每个数字都有出处。
             </p>
           </template>
+          <div class="build-chain">
+            <p class="bc-title">它如何撑起一座建筑 · 从柱身到屋面</p>
+            <div class="bc-steps">
+              <template v-for="(n, i) in BUILD_CHAIN" :key="n.name">
+                <span class="bc-node" :class="{ hot: i === chainIdx }" :title="n.desc">{{ n.name }}</span>
+                <i v-if="i < BUILD_CHAIN.length - 1" class="bc-arrow">→</i>
+              </template>
+            </div>
+            <p class="bc-desc">
+              <template v-if="chainHot"><b>📍 {{ chainHot.name }}</b> —— {{ chainHot.desc }}</template>
+              <template v-else>点击任意构件，看它站在链条的哪一环。</template>
+            </p>
+            <p class="bc-note">
+              把这样一朵铺作沿檐下一朵朵排开、架到每根柱头上，串以柱头枋，上承撩檐槫；钉椽、铺望、苫背、盖瓦——大殿的檐廊就此合成。走进「营造之旅」，看整座大殿如何立起来。
+            </p>
+          </div>
         </template>
       </aside>
 
@@ -441,6 +461,33 @@ const selected = ref<string | null>(null)
 // ── 学堂 ──
 const schoolParams = reactive<PuzuoParams>({ ...DEFAULT_PARAMS, ang: false })
 const schoolAllLabels = ref(false)
+const navOpen = ref(true)
+
+// ── 从柱身到屋面：一根构件如何搭进一座建筑 ──
+const BUILD_CHAIN: { name: string; desc: string }[] = [
+  { name: '柱身', desc: '全屋的竖向骨架——一切重量兜兜转转，最终都回到柱身上。' },
+  { name: '阑额 · 普拍枋', desc: '柱头之间的横向联系，是铺作坐落的"地基"。' },
+  { name: '栌斗', desc: '铺作基座：柱头的力从这里进入斗栱，一层一层散开。' },
+  { name: '铺作（斗 · 栱 · 昂）', desc: '檐下传力层——斗接栱、栱接枋，把出檐挑得远远的，再把重量稳稳送回柱身。' },
+  { name: '柱头枋', desc: '沿檐把一排排铺作串成整体的长枋。' },
+  { name: '撩檐槫', desc: '檐口最外那根圆檩，檐椽一字排开压在它身上。' },
+  { name: '椽飞 · 屋面', desc: '椽上铺望板、苫背、盖瓦——一座殿宇就此合顶。' }
+]
+const CHAIN_OF: Record<string, number> = {
+  puaipai: 1, ludou: 2, zhutoufang: 4, liaoyan: 5,
+  huagong: 3, nidao: 3, guazi: 3, man: 3,
+  jiaohidou: 3, sandou: 3, qixindou: 3, linggong: 3, shuatou: 3, xiaang: 3
+}
+function normalizedKey(sel: string | null): string | null {
+  if (!sel) return null
+  const base = sel.split('-')[0]
+  return base === 'jiaohudou' ? 'jiaohidou' : base === 'xia' ? 'xiaang' : base
+}
+const chainIdx = computed(() => {
+  const key = normalizedKey(selected.value)
+  return key ? CHAIN_OF[key] ?? -1 : -1
+})
+const chainHot = computed(() => (chainIdx.value >= 0 ? BUILD_CHAIN[chainIdx.value] : null))
 const ANG_NUM = ['', '单下昂', '双下昂', '三下昂']
 const MIAO_NUM = ['', '单杪', '双杪']
 function puzuoTitle(tiao: number, zhongGong: boolean, jiXin: boolean, ang: boolean): string {
@@ -841,6 +888,24 @@ onBeforeUnmount(() => clearInterval(timer))
   background: rgba(217, 164, 65, 0.05);
 }
 .cite span { display: block; margin-top: 0.25rem; text-align: right; color: rgba(217, 164, 65, 0.75); }
+.place { margin: 0.35rem 0 0; font-size: 0.78rem; color: var(--amber); letter-spacing: 0.04em; }
+.build-chain { margin-top: 0.8rem; padding-top: 0.65rem; border-top: 1px dashed rgba(217, 164, 65, 0.3); }
+.bc-title { margin: 0 0 0.45rem; font-size: 0.72rem; letter-spacing: 0.18em; color: rgba(217, 164, 65, 0.9); }
+.bc-steps { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.bc-node {
+  font-size: 0.72rem; padding: 2px 7px; border-radius: 3px; white-space: nowrap;
+  border: 1px solid rgba(230, 214, 178, 0.28); color: rgba(230, 214, 178, 0.78);
+  transition: all 0.2s;
+}
+.bc-node.hot {
+  border-color: var(--amber); color: var(--amber);
+  background: rgba(217, 164, 65, 0.14); box-shadow: 0 0 10px rgba(217, 164, 65, 0.25);
+}
+.bc-arrow { font-style: normal; font-size: 0.68rem; color: rgba(217, 164, 65, 0.45); }
+.bc-desc { margin: 0.5rem 0 0; font-size: 0.76rem; line-height: 1.7; color: rgba(230, 214, 178, 0.85); }
+.bc-desc b { color: var(--amber); }
+.bc-note { margin: 0.5rem 0 0; font-size: 0.72rem; line-height: 1.75; color: rgba(230, 214, 178, 0.55); }
+.nav-toggle { flex-shrink: 0; }
 
 .tray {
   position: absolute; left: 50%; bottom: 1.2rem; transform: translateX(-50%);
