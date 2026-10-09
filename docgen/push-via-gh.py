@@ -102,6 +102,15 @@ for i, path in enumerate(files, 1):
     tree_items.append({"path": path, "mode": mode, "type": "blob", "sha": blob["sha"]})
     print(f"  [{i}/{len(files)}] {path} -> {blob['sha'][:8]}")
 
+# 3.5) 删除清单 —— 本脚本用 base_tree + 覆盖清单，**不会自动删除**文件；
+#      需要从仓库移除的路径写在这里（Git trees API 用 sha=null 表示删除）
+DELETED = [
+    # 例：'docs/old-name.md',
+]
+for path in DELETED:
+    tree_items.append({"path": path, "mode": "100644", "type": "blob", "sha": None})
+    print(f"  删除 {path}")
+
 # 4) tree → commit → 更新 ref
 tree_payload = {"base_tree": base_tree, "tree": tree_items}
 tree_file = os.path.join(TMP, "gh-tree.json")
@@ -121,7 +130,7 @@ else:
     raise RuntimeError("tree 创建失败")
 
 commit_payload = {
-    "message": "docs: 同步 docs/ 至最新交付物 —— 答辩PPT（配图重制为「大木作」版）、设计说明文档 docx/pdf（封面信息与目录页码已修）、新增作品说明.txt、AI协作过程记录；重写部署指引（大木作命名、单文件离线首选、三处同步纪律、--commit-dirty 说明）；aigc-log.md 改名 AI协作过程记录.md",
+    "message": "docs: 清理过程文档旧名残留（共 49 处）—— 作品题名与简介 / 演示视频词稿 / 答辩问答集 / 录制当天速查卡：《营造》→《大木作》、英文名 YINGZAO→DAMUZUO、题名释义改依「大木作制度」、AIGC 改中性表述、专项赛道改「民族文化，创新表达」方向、演示账号与减震数据（68%→67%）同步",
     "tree": tree["sha"],
     "parents": [head_sha],
 }
