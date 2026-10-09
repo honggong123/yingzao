@@ -2,7 +2,7 @@
 // 输出 1280x720 PNG 到 OUT 目录
 import { writeFileSync, mkdirSync } from 'node:fs'
 
-const PORT = 9223
+const PORT = 9224
 const URL = process.argv[2]
 const OUT = process.argv[3]
 const USER = '木作学徒'
@@ -133,17 +133,17 @@ async function main() {
   await setRange(0, 0.55); await sleep(900); await frames(12)
   await shot('05-baojian.png')
 
-  // ── 06 quake：中震 16分 / 2Hz / 斗栱连接 / 运行中 ──
-  console.log('[06] 斗栱抗震 中震运行中')
+  // ── 06 quake：震级 7 级（中震） / 2Hz / 斗栱连接 / 运行中 ──
+  console.log('[06] 斗栱抗震 震级7级(中震) 运行中')
   await goto('斗栱抗震')
   await clickText('中震'); await sleep(200)
   await clickText('斗栱连接'); await sleep(200)
-  await setRange(0, 16); await setRange(1, 2); await sleep(300)
+  await setRange(0, 7); await setRange(1, 2); await sleep(300) // 0=震级滑块 1=频率滑块
   await clickText('▶ 开始震动'); await sleep(2600); await frames(12)
   await shot('06-quake.png')
-  // 顺手记录当前显示的减震值
+  const mag = await evalJs(`(document.body.innerText.match(/震级\\s*·\\s*(\\d+)\\s*级/)||[])[1] || '未找到'`)
   const pct = await evalJs(`(document.body.innerText.match(/减震\\s*(\\d+)%/)||[])[1] || '未找到'`)
-  console.log('   >> 截图时应用显示的减震值:', pct + '%')
+  console.log('   >> 界面显示震级:', mag + ' 级   减震:', pct + '%')
 
   // ── 07 palace：檐下成排铺作 ──
   console.log('[07] 营造之旅 檐下铺作')

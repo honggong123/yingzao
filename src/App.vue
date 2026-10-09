@@ -349,13 +349,14 @@
         <!-- 斗栱抗震控制台 -->
         <template v-else-if="module === 'quake'">
           <div class="sec">
-            <span class="sec-label">振幅 · {{ quakeOpts.A }} 分</span>
-            <input v-model.number="quakeOpts.A" type="range" min="2" max="28" step="1" class="slider" />
+            <span class="sec-label">震级 · {{ quakeMag }} 级</span>
+            <input v-model.number="quakeMag" type="range" :min="QUAKE_MAG_MIN" :max="QUAKE_MAG_MAX" step="1" class="slider" />
             <div class="seg" style="margin-top: 0.4rem">
-              <button class="seg-btn" :class="{ active: quakeOpts.A === 8 }" @click="quakeOpts.A = 8">小震</button>
-              <button class="seg-btn" :class="{ active: quakeOpts.A === 16 }" @click="quakeOpts.A = 16">中震</button>
-              <button class="seg-btn" :class="{ active: quakeOpts.A === 28 }" @click="quakeOpts.A = 28">大震</button>
+              <button class="seg-btn" :class="{ active: quakeMag === 5 }" @click="quakeMag = 5">小震</button>
+              <button class="seg-btn" :class="{ active: quakeMag === 7 }" @click="quakeMag = 7">中震</button>
+              <button class="seg-btn" :class="{ active: quakeMag === 9 }" @click="quakeMag = 9">大震</button>
             </div>
+            <p class="tip" style="margin-top: 0.45rem">{{ QUAKE_MAG_DESC[quakeMag] }}</p>
           </div>
           <div class="sec">
             <span class="sec-label">频率 · {{ quakeOpts.freqHz.toFixed(1) }} Hz</span>
@@ -690,7 +691,31 @@ const jointT = ref(1)
 const jointMeta = ref<{ name: string; desc: string; source: string } | null>(null)
 
 // ── 斗栱抗震 ──
-const quakeOpts = reactive({ A: 16, freqHz: 2, mode: 'dougong' as 'dougong' | 'rigid', running: false })
+// 界面以「地震震级」（标准 1–9 级）为输入；内部换算为地面振幅（分）驱动物理模型。
+// 换算取等比：A(1)=2 分、A(9)=28 分，档间约 ×1.39。
+// 注：真实地震震级每增 1 级地面振幅约增 10 倍；本演示量程有限，为教学示意压缩。
+const QUAKE_MAG_MIN = 1
+const QUAKE_MAG_MAX = 9
+const QUAKE_MAG_DESC: Record<number, string> = {
+  1: '超微震 · 仅仪器可记录',
+  2: '微震 · 一般无感',
+  3: '有感地震 · 室内少数人有感',
+  4: '有感地震 · 悬挂物摆动，多数人有感',
+  5: '中强地震 · 门窗作响，器皿晃动',
+  6: '强震 · 器皿翻倒，简陋房屋受损',
+  7: '大地震 · 房屋损坏，地面出现裂缝',
+  8: '巨大地震 · 严重破坏，地表变形',
+  9: '特大 · 毁灭性破坏',
+}
+function magToAmp(m: number): number {
+  const r = QUAKE_MAG_MAX - QUAKE_MAG_MIN
+  return +(2 * Math.pow(14, (m - QUAKE_MAG_MIN) / r)).toFixed(2)
+}
+const quakeMag = ref(7)
+const quakeOpts = reactive({ A: magToAmp(7), freqHz: 2, mode: 'dougong' as 'dougong' | 'rigid', running: false })
+watchEffect(() => {
+  quakeOpts.A = magToAmp(quakeMag.value)
+})
 const quakeStats = ref({ ratio: 1, peakG: 0, peakR: 0 })
 const dampingPct = computed(() => Math.round(Math.max(0, (1 - quakeStats.value.ratio) * 100)))
 
