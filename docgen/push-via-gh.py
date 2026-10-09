@@ -121,7 +121,7 @@ else:
     raise RuntimeError("tree 创建失败")
 
 commit_payload = {
-    "message": "《大木作》v1.0 —— 作品更名（营造→大木作）与交付前全面完善：清除旧名残留、开发里程碑标签与「演示版 0.5」；修正点击判定（pointerdown 改为按下记起点+抬起判位移，拖拽转视角不再误选中构件）；登录门按钮与页脚文案更新；新增单文件构建配置与提交包处理脚本",
+    "message": "docs: 同步 docs/ 至最新交付物 —— 答辩PPT（配图重制为「大木作」版）、设计说明文档 docx/pdf（封面信息与目录页码已修）、新增作品说明.txt、AI协作过程记录；重写部署指引（大木作命名、单文件离线首选、三处同步纪律、--commit-dirty 说明）；aigc-log.md 改名 AI协作过程记录.md",
     "tree": tree["sha"],
     "parents": [head_sha],
 }
