@@ -130,7 +130,7 @@ else:
     raise RuntimeError("tree 创建失败")
 
 commit_payload = {
-    "message": "docs: README 同步最新状态 —— 竞赛材料表更新为 AI协作过程记录.md（原 aigc-log.md）、补作品说明.txt、部署指引描述改为「三处同步纪律」；移除 AIGC 赛道表述",
+    "message": "chore: 为已废弃的文档生成器加防误跑拦截 —— generate-ppt.js / generate.js 头部标注废弃原因（输出旧口径《营造》+ AIGC 专项赛道，且无法复现交付物的手改成果），运行时默认中止并提示，需 DOCGEN_FORCE=1 才放行",
     "tree": tree["sha"],
     "parents": [head_sha],
 }

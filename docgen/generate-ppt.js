@@ -1,9 +1,36 @@
-// 《营造》答辩 PPT 生成 —— pptxgenjs
-// 主题：墨金深色（与作品 UI 一致：BG #15110D / 金 #D9A441 / 朱 #B8503A）
-// 画布：LAYOUT_WIDE 13.33 × 7.5"
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚠️  已废弃（2026-10-09）—— 请勿运行
+//
+// 这是 2026-09-27 版的 PPT 生成器，输出仍是旧口径：
+//   《营造》（作品已于 2026-10-08 更名为《大木作》）· AIGC 专项赛道 · 减震 68%
+//
+// 交付物此后经过大量手改，本脚本**无法复现**：
+//   封面团队/指导教师/学校/日期 · 目录页码 · 7 张配图重制 · 赛道表述改写
+//
+// 运行会以相对路径写出 `答辩PPT.pptx`；若在 docs/ 或提交包目录下运行，
+// 将**覆盖正式交付物**。交付物以 docs/ 为准。
+//
+// 确需运行：DOCGEN_FORCE=1 node generate-ppt.js
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 原说明：pptxgenjs 生成 · 主题墨金深色（与作品 UI 一致）· 画布 LAYOUT_WIDE 13.33 × 7.5"
 const pptxgen = require("pptxgenjs");
 const fs = require("fs");
 const { imageSize } = require("image-size");
+
+// ── 废弃拦截 ──
+if (process.env.DOCGEN_FORCE !== "1") {
+  console.error("");
+  console.error("⚠️  已废弃的生成器，已中止运行。");
+  console.error("");
+  console.error("   本脚本输出旧口径（《营造》/ AIGC 专项赛道 / 减震 68%），");
+  console.error("   且无法复现交付物的手改成果（封面信息、目录页码、配图重制）。");
+  console.error("   交付物以 docs/ 为准。");
+  console.error("");
+  console.error("   确需运行：DOCGEN_FORCE=1 node generate-ppt.js");
+  console.error("");
+  process.exit(1);
+}
 
 const pres = new pptxgen();
 pres.layout = "LAYOUT_WIDE";

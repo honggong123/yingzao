@@ -1,5 +1,19 @@
-// 《营造》设计说明文档生成 —— docx-js
-// 封面：R2 Double-Rule Frame + IG-1 Ink Gold（匹配作品"墨金"视觉）
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚠️  已废弃（2026-10-09）—— 请勿运行
+//
+// 这是 2026-09-27 版的设计说明文档生成器，输出仍是旧口径：
+//   《营造》（作品已于 2026-10-08 更名为《大木作》）· AIGC 专项赛道
+//
+// 交付物此后经过大量手改，本脚本**无法复现**：
+//   封面团队/指导教师/学校/日期 · 目录页码回填 · 章节标题与数据统一
+//
+// 运行会以相对路径写出 `设计说明文档.docx`；若在 docs/ 或提交包目录下运行，
+// 将**覆盖正式交付物**。交付物以 docs/ 为准。
+//
+// 确需运行：DOCGEN_FORCE=1 node generate.js
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// 原说明：docx-js 生成 · 封面 R2 Double-Rule Frame + IG-1 Ink Gold（墨金）
 // 结构：封面（无页码）→ 前置（摘要+目录，罗马页码）→ 正文（阿拉伯页码从 1 起）
 const {
   Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
@@ -9,6 +23,20 @@ const {
 } = require("docx");
 const fs = require("fs");
 const { imageSize: sizeOf } = require("image-size");
+
+// ── 废弃拦截 ──
+if (process.env.DOCGEN_FORCE !== "1") {
+  console.error("");
+  console.error("⚠️  已废弃的生成器，已中止运行。");
+  console.error("");
+  console.error("   本脚本输出旧口径（《营造》/ AIGC 专项赛道），");
+  console.error("   且无法复现交付物的手改成果（封面信息、目录页码、章节数据）。");
+  console.error("   交付物以 docs/ 为准。");
+  console.error("");
+  console.error("   确需运行：DOCGEN_FORCE=1 node generate.js");
+  console.error("");
+  process.exit(1);
+}
 
 // ── 调色板：IG-1 Ink Gold（墨金）──
 const P = {
