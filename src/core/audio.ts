@@ -1,7 +1,6 @@
 // 木声合成器 + 环境音氛围 —— 全部由 Web Audio 程序化合成，零音频素材。
 // 拼装"咔哒"、错序闷响、完成拨弦（五声音阶）、环境古琴泛音（Karplus-Strong）。
 import { ref } from 'vue'
-import { ref } from 'vue'
 
 let ctx: AudioContext | null = null
 let master: GainNode | null = null

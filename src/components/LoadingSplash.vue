@@ -1,6 +1,6 @@
 <template>
   <div class="splash">
-    <span class="seal">營造</span>
+    <span class="seal">大木</span>
     <p class="splash-text">正在展开营造图纸<span class="dots">…</span></p>
   </div>
 </template>

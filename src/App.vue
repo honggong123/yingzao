@@ -3,9 +3,9 @@
   <div v-else class="app">
     <header class="topbar">
       <div class="brand">
-        <span class="seal">營造</span>
+        <span class="seal">大木</span>
         <div class="brand-text">
-          <strong>营造 · 数字营造系统</strong>
+          <strong>大木作 · 数字营造系统</strong>
           <span>宋《营造法式》斗栱榫卯 · 可拆可拼可改可造</span>
         </div>
       </div>
@@ -750,12 +750,12 @@ function switchModule(id: StudioModule) {
 }
 const milestoneText = computed(() => {
   const map: Record<string, string> = {
-    school: '里程碑 M2 / M6 · 营造学堂',
-    game: '里程碑 M3 / M6 · 拼装挑战',
-    workshop: '里程碑 M4 / M6 · 参数工坊',
-    joints: '里程碑 M4 / M6 · 榫卯谱',
-    quake: '优化更新 · 斗栱抗震演示',
-    palace: '里程碑 M5 / M6 · 营造之旅'
+    school: '营造学堂 · 构件认知',
+    game: '拼装挑战 · 游戏化拼装',
+    workshop: '参数工坊 · 材分制可视化',
+    joints: '榫卯谱 · 六种经典榫卯',
+    quake: '斗栱抗震 · 结构原理演示',
+    palace: '营造之旅 · 程序化大殿'
   }
   return map[module.value] ?? ''
 })

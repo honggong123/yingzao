@@ -45,7 +45,7 @@ interface Step {
 
 const steps: Step[] = [
   {
-    title: '欢迎来到《营造》',
+    title: '欢迎来到《大木作》',
     text: '这是一座可以拆、可以拼、可以改的宋式斗栱营造系统。下面用六步教你操作——每一步都有箭头指明位置。',
     sel: null,
     place: 'center'

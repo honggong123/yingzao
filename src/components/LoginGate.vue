@@ -2,8 +2,8 @@
   <div class="gate">
     <div class="gate-glow"></div>
     <div class="gate-panel">
-      <span class="gate-seal">營造</span>
-      <h1 class="gate-title">营造 · 数字营造系统</h1>
+      <span class="gate-seal">大木</span>
+      <h1 class="gate-title">大木作 · 数字营造系统</h1>
       <p class="gate-sub">宋《营造法式》斗栱榫卯 —— 可拆 · 可拼 · 可改 · 可造</p>
 
       <div class="gate-seg">
@@ -21,14 +21,14 @@
       </template>
 
       <button class="gate-submit" @click="submit">
-        {{ mode === 'login' ? '进入营造系统' : '注册并进入' }}
+        {{ mode === 'login' ? '进入大木作' : '注册并进入' }}
       </button>
       <p v-if="msg" class="gate-msg" :class="{ err: !msgOk }">{{ msg }}</p>
       <p class="gate-note">
         演示版鉴权：账号保存在本机浏览器（密码经 SHA-256 摘要），登录后可保存拼装落成成绩；正式版将接入云端服务。
       </p>
     </div>
-    <p class="gate-foot">全国大学生数字媒体科技作品及创意竞赛 · 参赛作品《营造》 · 演示版 0.5</p>
+    <p class="gate-foot">全国大学生数字媒体科技作品及创意竞赛 · 参赛作品《大木作》</p>
   </div>
 </template>
 

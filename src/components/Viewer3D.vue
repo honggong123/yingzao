@@ -91,6 +91,10 @@ let hoverMat: THREE.MeshStandardMaterial
 let hoverChip: HTMLDivElement | null = null
 let hoveredKey: string | null = null
 let selectedKey: string | null = null
+/** 点击判定阈值（px）：按下→抬起位移超过此值即视为拖拽转视角，不触发选中 */
+const DRAG_SLOP = 5
+/** 本次按下的起点；null 表示当前没有进行中的按下 */
+let downAt: { x: number; y: number } | null = null
 let firstBuild = true
 let desiredPos: THREE.Vector3 | null = null
 let desiredTarget: THREE.Vector3 | null = null
@@ -551,9 +555,33 @@ function onHover(ev: PointerEvent) {
 
 function onHoverLeave() {
   hoveredKey = null
+  downAt = null // 指针离开画布：丢弃未完成的按下，避免与陈旧起点比较
   if (hoverChip) hoverChip.style.display = 'none'
   if (canvas.value) canvas.value.style.cursor = ''
   if (props.module !== 'game') applyPartMaterials()
+}
+
+// ── 点击判定 ──
+// 原先直接绑在 pointerdown 上：用户想拖拽旋转视角时，按下瞬间光标压在某构件上
+// 就会误选中该件。改为「按下记起点 → 抬起判位移」，位移小于阈值才算点击。
+function onPointerDown(ev: PointerEvent) {
+  if (ev.button !== 0) return // 只认主键（左键/单指）
+  downAt = { x: ev.clientX, y: ev.clientY }
+  stopFraming() // 用户一触碰即接管镜头，避免自动取景与手动旋转相互拉扯
+}
+
+function onPointerUp(ev: PointerEvent) {
+  if (ev.button !== 0 || !downAt) return
+  const dx = ev.clientX - downAt.x
+  const dy = ev.clientY - downAt.y
+  downAt = null
+  if (Math.hypot(dx, dy) > DRAG_SLOP) return // 拖拽 → 只转视角，不改变选中
+  pick(ev)
+}
+
+/** 系统中断（如手势被系统接管）时丢弃按下状态，不触发选中 */
+function onPointerCancel() {
+  downAt = null
 }
 
 function pick(ev: PointerEvent) {
@@ -587,7 +615,9 @@ onMounted(() => {
   stage = createStage(canvas.value!)
   raycaster = new THREE.Raycaster()
   pointer = new THREE.Vector2()
-  canvas.value!.addEventListener('pointerdown', pick)
+  canvas.value!.addEventListener('pointerdown', onPointerDown)
+  canvas.value!.addEventListener('pointerup', onPointerUp)
+  canvas.value!.addEventListener('pointercancel', onPointerCancel)
   canvas.value!.addEventListener('pointermove', onHover)
   canvas.value!.addEventListener('pointerleave', onHoverLeave)
 

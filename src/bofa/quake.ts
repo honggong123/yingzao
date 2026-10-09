@@ -142,7 +142,7 @@ export function createQuakeRig(params: PuzuoParams, opts: QuakeOptions): QuakeRi
         }
         running = o.running
       }
-      if (o.mode !== undefined && o.mode !== undefined) {
+      if (o.mode !== undefined) {
         const c = MODE_CFG[o.mode]
         wn = c.wn
         zeta = c.zeta
