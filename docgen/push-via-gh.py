@@ -130,7 +130,7 @@ else:
     raise RuntimeError("tree 创建失败")
 
 commit_payload = {
-    "message": "docs: 清理过程文档旧名残留（共 49 处）—— 作品题名与简介 / 演示视频词稿 / 答辩问答集 / 录制当天速查卡：《营造》→《大木作》、英文名 YINGZAO→DAMUZUO、题名释义改依「大木作制度」、AIGC 改中性表述、专项赛道改「民族文化，创新表达」方向、演示账号与减震数据（68%→67%）同步",
+    "message": "docs: README 同步最新状态 —— 竞赛材料表更新为 AI协作过程记录.md（原 aigc-log.md）、补作品说明.txt、部署指引描述改为「三处同步纪律」；移除 AIGC 赛道表述",
     "tree": tree["sha"],
     "parents": [head_sha],
 }
