@@ -130,7 +130,7 @@ else:
     raise RuntimeError("tree 创建失败")
 
 commit_payload = {
-    "message": "docs: 同步 Gitee 镜像状态 —— 部署指引补镜像更新方法与 core.autocrlf=false 注意事项；AI协作过程记录补线上核查与镜像同步条目（原镜像停在 09-28 v0.5，已更新至最新构建）",
+    "message": "fix: 抗震减震率口径全链修正（67%→70%，刚性放大 131%→133%）+ 新增一键同步编排器 sync-all.mjs 与 pptx 重打包工具 repack-pptx.py",
     "tree": tree["sha"],
     "parents": [head_sha],
 }

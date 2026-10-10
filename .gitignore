@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-single/
 docgen/node_modules/
 docgen/*.docx
 docgen/*.pdf
@@ -7,3 +8,6 @@ docgen/*.pptx
 docgen/images/
 *.log
 .DS_Store
+
+# 本地工具状态（非交付物）
+.mimosa/

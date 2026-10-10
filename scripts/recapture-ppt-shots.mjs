@@ -1,8 +1,9 @@
 // 重截《大木作》答辩 PPT 的 7 张内嵌截图（CDP 驱动，零依赖）
 // 输出 1280x720 PNG 到 OUT 目录
 import { writeFileSync, mkdirSync } from 'node:fs'
+import http from 'node:http'
 
-const PORT = 9224
+const PORT = Number(process.env.CDP_PORT || 9224)
 const URL = process.argv[2]
 const OUT = process.argv[3]
 const USER = '木作学徒'
@@ -10,13 +11,28 @@ const USER = '木作学徒'
 mkdirSync(OUT, { recursive: true })
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// 本机有 HTTP_PROXY 环境变量，Node 的 fetch 会把 localhost 也走代理；
+// 改用 node:http 直连 CDP（已实测不受代理影响）。
+function httpGetJson(url, timeoutMs = 5000) {
+  return new Promise((resolve, reject) => {
+    const req = http.get(url, { timeout: timeoutMs }, (res) => {
+      let d = ''
+      res.on('data', (c) => (d += c))
+      res.on('end', () => {
+        try { resolve(JSON.parse(d)) } catch (e) { reject(e) }
+      })
+    })
+    req.on('timeout', () => req.destroy(new Error('timeout')))
+    req.on('error', reject)
+  })
+}
+
 async function connect() {
   let list = []
   for (let i = 0; i < 60; i++) {
     try {
-      const r = await fetch(`http://127.0.0.1:${PORT}/json/list`)
-      list = await r.json()
-      if (list.some((t) => t.type === 'page')) break
+      list = await httpGetJson(`http://127.0.0.1:${PORT}/json/list`)
+      if (Array.isArray(list) && list.some((t) => t.type === 'page')) break
     } catch {}
     await sleep(250)
   }
@@ -134,16 +150,27 @@ async function main() {
   await shot('05-baojian.png')
 
   // ── 06 quake：震级 7 级（中震） / 2Hz / 斗栱连接 / 运行中 ──
+  // 注意：减震率稳态为 70%（理论传递率 0.3007），但运行期峰值比（ratio）有抖动，
+  //       故截图前轮询等待界面读到 70%，保证 PPT 图文数值与文档口径一致。
   console.log('[06] 斗栱抗震 震级7级(中震) 运行中')
   await goto('斗栱抗震')
   await clickText('中震'); await sleep(200)
   await clickText('斗栱连接'); await sleep(200)
   await setRange(0, 7); await setRange(1, 2); await sleep(300) // 0=震级滑块 1=频率滑块
-  await clickText('▶ 开始震动'); await sleep(2600); await frames(12)
+  await clickText('▶ 开始震动')
+  const readPct = () => evalJs(`(document.body.innerText.match(/减震\\s*(\\d+)%/)||[])[1] || ''`)
+  let pctNow = ''
+  for (let i = 0; i < 60; i++) {          // 最多等 12s，抓住 70% 的稳定窗口
+    pctNow = await readPct()
+    if (pctNow === '70') break
+    await sleep(200)
+  }
+  await frames(12)
   await shot('06-quake.png')
   const mag = await evalJs(`(document.body.innerText.match(/震级\\s*·\\s*(\\d+)\\s*级/)||[])[1] || '未找到'`)
-  const pct = await evalJs(`(document.body.innerText.match(/减震\\s*(\\d+)%/)||[])[1] || '未找到'`)
-  console.log('   >> 界面显示震级:', mag + ' 级   减震:', pct + '%')
+  const pct = await readPct()
+  console.log('   >> 界面显示震级:', mag + ' 级   减震:', (pct || '未找到') + '%')
+  if (pct !== '70') console.log('   ⚠️  截图瞬间减震率非 70%（当前', pct, '），PPT 正文口径为 70%')
 
   // ── 07 palace：檐下成排铺作 ──
   console.log('[07] 营造之旅 檐下铺作')
@@ -160,7 +187,10 @@ async function main() {
   console.log('异常:', errs.length ? errs.slice(-5) : '无')
 }
 
-main().catch((e) => {
+main().then(() => {
+  // 截图完成；WebSocket 仍打开会保持事件循环，必须显式退出，否则调用方（sync-all）会永久等待
+  process.exit(0)
+}).catch((e) => {
   console.error('失败:', e.message)
   process.exit(1)
 })
