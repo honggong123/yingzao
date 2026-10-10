@@ -802,6 +802,7 @@ onBeforeUnmount(() => clearInterval(timer))
 <style scoped>
 .app { height: 100%; display: flex; flex-direction: column; }
 .topbar {
+  position: relative;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.9rem 1.6rem; border-bottom: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(29, 23, 18, 0.92), rgba(21, 17, 13, 0.85)); z-index: 10;
@@ -966,6 +967,17 @@ onBeforeUnmount(() => clearInterval(timer))
   .brand-text span { display: none; }
   .user-chip { display: none; }
   .modules { display: none; }
+  /* 窄屏：功能栏改为浮动下拉面板，避免把 nav-toggle 挤出屏幕 */
+  .user-area {
+    position: absolute; right: 0.9rem; top: calc(100% + 0.4rem);
+    flex-direction: column; align-items: stretch; gap: 0.35rem;
+    margin-left: 0; padding: 0.6rem;
+    background: rgba(26, 20, 14, 0.96); border: 1px solid var(--line);
+    border-radius: 3px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 40; min-width: 9.5rem;
+  }
+  .user-area .module { text-align: center; border-color: rgba(217, 164, 65, 0.25); }
+  .nav-toggle { margin-left: auto; }
   .console-toggle {
     display: inline-flex;
     position: absolute;

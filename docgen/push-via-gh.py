@@ -130,7 +130,7 @@ else:
     raise RuntimeError("tree 创建失败")
 
 commit_payload = {
-    "message": "docs: 补齐 docs 内离线单文件副本（大木作-离线单文件版.html），与提交包保持同步",
+    "message": "fix: 手机端 header 横向溢出修复（user-area 改浮动下拉面板）+ 技术数据同步（分包体积刷新至 2026-10 实测）+ 新增 5 个体检脚本与 Office 文本替换工具",
     "tree": tree["sha"],
     "parents": [head_sha],
 }
