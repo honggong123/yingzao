@@ -130,7 +130,7 @@ else:
     raise RuntimeError("tree 创建失败")
 
 commit_payload = {
-    "message": "fix: 抗震减震率口径全链修正（67%→70%，刚性放大 131%→133%）+ 新增一键同步编排器 sync-all.mjs 与 pptx 重打包工具 repack-pptx.py",
+    "message": "docs: 补齐 docs 内离线单文件副本（大木作-离线单文件版.html），与提交包保持同步",
     "tree": tree["sha"],
     "parents": [head_sha],
 }
