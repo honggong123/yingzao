@@ -1,5 +1,7 @@
 # 通过 gh CLI（自带网络栈与凭据）+ GitHub Git Data API 上传仓库
 # 流程：种子（如空仓库）→ blobs → tree → commit → 更新 ref；带重试
+# commit message：优先取环境变量 COMMIT_MSG，未设则用下方默认值
+#   COMMIT_MSG="feat: xxx" python docgen/push-via-gh.py
 import base64
 import json
 import os
@@ -130,7 +132,10 @@ else:
     raise RuntimeError("tree 创建失败")
 
 commit_payload = {
-    "message": "fix: 手机端 header 横向溢出修复（user-area 改浮动下拉面板）+ 技术数据同步（分包体积刷新至 2026-10 实测）+ 新增 5 个体检脚本与 Office 文本替换工具",
+    "message": os.environ.get(
+        "COMMIT_MSG",
+        "fix: 手机端 header 横向溢出修复（user-area 改浮动下拉面板）+ 技术数据同步（分包体积刷新至 2026-10 实测）+ 新增 5 个体检脚本与 Office 文本替换工具",
+    ),
     "tree": tree["sha"],
     "parents": [head_sha],
 }

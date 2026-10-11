@@ -8,7 +8,8 @@
 // 用法：
 //   node scripts/sync-all.mjs                # 跑全部步骤
 //   node scripts/sync-all.mjs --no-deploy    # 跳过部署（等线上核验时用）
-//   node scripts/sync-all.mjs --no-push      # 跳过源码推送
+//   node scripts/sync-all.mjs --no-push      # 跳过源码推送（GitHub + Gitee）
+//   node scripts/sync-all.mjs --no-audit     # 跳过代码审计
 //   node scripts/sync-all.mjs --from=3       # 从第 3 步开始（前 2 步已完成）
 //   node scripts/sync-all.mjs --only=5       # 只跑第 5 步
 //   node scripts/sync-all.mjs --dry          # 只打印将执行的命令，不实际运行
@@ -20,13 +21,14 @@
 //   4. 检查 设计说明文档（需人工确认的会提示）
 //   5. 重建 营造-提交包.zip（排除 PPT）
 //   6. 同步 yingzao/docs/ 交付物副本
-//   7. 推送源码（push-via-gh.py）
-//   8. 提示 AI协作过程记录.md 是否需要更新（人工）
+//   7. 代码审计（bug / 风险排查：线上体检 + 多视口 + 手机溢出 + 离线 + 性能 + 几何）
+//   8. 推送源码（GitHub + Gitee，二者保持一致）
+//   9. 提示 AI协作过程记录.md 是否需要更新（人工）
 // ============================================================================
 import { execSync, spawnSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import http from 'node:http'
-import { existsSync, readFileSync, copyFileSync, rmSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, copyFileSync, rmSync, readdirSync, mkdirSync, statSync } from 'node:fs'
 import { dirname, join, resolve, basename } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -52,6 +54,7 @@ const val = (name, dflt) => {
 const DRY = opt('dry')
 const NO_DEPLOY = opt('no-deploy')
 const NO_PUSH = opt('no-push')
+const NO_AUDIT = opt('no-audit')
 const FROM = Number(val('from', '1'))
 const ONLY = val('only', null)
 
@@ -108,7 +111,8 @@ function shouldRun(n) {
   if (ONLY) return String(n) === ONLY
   if (n < FROM) return false
   if (n === 1 && NO_DEPLOY) return false
-  if (n === 7 && NO_PUSH) return false
+  if (n === 7 && NO_AUDIT) return false
+  if (n === 8 && NO_PUSH) return false
   return true
 }
 
@@ -321,24 +325,104 @@ async function step6_sync_docs() {
 }
 
 // ============================================================================
-// 第 7 步：推送源码
+// 第 7 步：代码审计（bug / 风险排查）
 // ============================================================================
-async function step7_push() {
-  step(7, '推送源码（push-via-gh.py）')
-  warn('注意：推送前请确认 docgen/push-via-gh.py 内的 commit message 已改为本次改动说明')
-  warn('（如需删除远程文件，写入脚本内 DELETED 清单）')
-  run('python docgen/push-via-gh.py')
-  note(7, '源码已推送至 GitHub')
+const AUDIT_DIR = join(PROJECT, 'docs', '审计报告')
+
+async function step7_audit() {
+  step(7, '代码审计（bug / 风险排查）')
+
+  const singleFile = join(PKG, '大木作-离线单文件版.html')
+  const jobs = [
+    ['线上体检', `node scripts/audit-live.mjs ${SITE}`],
+    ['多视口+登录', `node scripts/audit-viewport.mjs ${SITE}`],
+    ['手机端溢出', `node scripts/audit-mobile.mjs ${SITE}`],
+    ['离线单文件', `node scripts/audit-offline.mjs "${singleFile}"`],
+    ['性能 FPS', `node scripts/audit-perf.mjs ${SITE}`],
+    ['几何审计', 'node scripts/build-audit.mjs && node scripts/audit-puzuo.cjs'],
+  ]
+
+  if (DRY) {
+    for (const [, c] of jobs) info(`[dry] ${c}`)
+    note(7, '审计将执行 6 项')
+    return
+  }
+
+  mkdirSync(AUDIT_DIR, { recursive: true })
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+  const reportFile = join(AUDIT_DIR, `${stamp}.txt`)
+  const chunks = [`《大木作》代码审计报告  ${stamp}`, `站点: ${SITE}`, `离线: ${singleFile}`, '']
+  const summary = []
+
+  for (const [name, cmd] of jobs) {
+    info(`▶ ${name} …`)
+    let txt = ''
+    try {
+      txt = out(cmd)
+    } catch (e) {
+      txt = `[执行失败] ${e.message}`
+    }
+    const bad = (txt.match(/❌/g) || []).length
+    const wrn = (txt.match(/⚠️/g) || []).length
+    summary.push({ name, bad, wrn })
+    chunks.push(`\n${'='.repeat(64)}\n【${name}】\n  $ ${cmd}\n${'='.repeat(64)}\n${txt}\n`)
+    if (bad) warn(`${name}：发现 ${bad} 处 ❌`)
+    else ok(`${name}：无 ❌`)
+  }
+
+  writeFileSync(reportFile, chunks.join('\n'), 'utf-8')
+  ok(`审计报告已保存：${reportFile}`)
+
+  // 收尾：清掉审计脚本遗留的 headless Chrome
+  try { spawnSync('taskkill', ['/F', '/IM', 'chrome.exe', '/T'], { shell: true, stdio: 'ignore' }) } catch {}
+
+  const totalBad = summary.reduce((s, x) => s + x.bad, 0)
+  if (totalBad) warn(`审计共发现 ${totalBad} 处 ❌ 标记 —— 请查看报告逐项确认`)
+  else ok('审计未发现 ❌ 标记')
+
+  note(7, `代码审计完成（${summary.map((s) => `${s.name}❌${s.bad}`).join(' / ')}）`)
 }
 
 // ============================================================================
-// 第 8 步：提示 AI协作过程记录（人工）
+// 第 8 步：推送源码（GitHub + Gitee）
 // ============================================================================
-async function step8_record() {
-  step(8, '检查 AI协作过程记录.md（需人工判断）')
+async function step8_push() {
+  step(8, '推送源码（GitHub + Gitee，二者保持一致）')
+  info('commit message 取环境变量 COMMIT_MSG（GitHub / Gitee 共用），未设则用脚本内默认值：')
+  info('  COMMIT_MSG="feat: xxx" npm run sync')
+  warn('（如需删除远程文件，写入脚本内 DELETED 清单）')
+
+  // 8a. GitHub
+  run('python docgen/push-via-gh.py')
+  ok('GitHub 推送完成')
+
+  // 8b. Gitee（凭据缺失则跳过并提示）
+  const giteeEnv = join(PROJECT, 'docgen', '.gitee.env')
+  const hasCred = (process.env.GITEE_TOKEN && process.env.GITEE_REPO) || existsSync(giteeEnv)
+  if (!hasCred) {
+    warn('未检测到 Gitee 凭据（GITEE_TOKEN/GITEE_REPO 或 docgen/.gitee.env）—— 跳过 Gitee 推送')
+    warn('配置方式见 docs/部署指引.md「Gitee 源码推送」')
+    note(8, 'GitHub 已推送；Gitee 已跳过（缺凭据）')
+    return
+  }
+  const r = run('python docgen/push-via-gitee.py', { allowFail: true })
+  if (r.status === 0) {
+    ok('Gitee 推送完成')
+    note(8, '源码已推送至 GitHub + Gitee（一致）')
+  } else {
+    warn('Gitee 推送失败 —— 请检查令牌权限 / 仓库地址')
+    note(8, 'GitHub 已推送；Gitee 推送失败（需排查）')
+  }
+}
+
+// ============================================================================
+// 第 9 步：提示 AI协作过程记录（人工）
+// ============================================================================
+async function step9_record() {
+  step(9, '检查 AI协作过程记录.md（需人工判断）')
   warn('若本次改动涉及功能 / 口径变化，请在 营造-提交包/AI协作过程记录.md 追加对应条目，')
   warn('并同步  yingzao/docs/AI协作过程记录.md（两边保持一致）。')
-  note(8, 'AI协作过程记录 —— 需人工确认')
+  note(9, 'AI协作过程记录 —— 需人工确认')
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -361,8 +445,9 @@ async function main() {
     [4, step4_docx],
     [5, step5_zip],
     [6, step6_sync_docs],
-    [7, step7_push],
-    [8, step8_record],
+    [7, step7_audit],
+    [8, step8_push],
+    [9, step9_record],
   ]
 
   const failed = []
