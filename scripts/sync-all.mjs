@@ -361,6 +361,7 @@ async function step7_audit() {
     ['线上体检', `node scripts/audit-live.mjs ${SITE}`],
     ['多视口+登录', `node scripts/audit-viewport.mjs ${SITE}`],
     ['账号隔离', `node scripts/audit-account-isolation.mjs ${SITE}`],
+    ['拼装关卡', `node scripts/audit-game-level.mjs ${SITE}`],
     ['手机端溢出', `node scripts/audit-mobile.mjs ${SITE}`],
     ['离线单文件', `node scripts/audit-offline.mjs "${singleFile}"`],
     ['性能 FPS', `node scripts/audit-perf.mjs ${SITE}`],
@@ -398,9 +399,9 @@ async function step7_audit() {
   writeFileSync(reportFile, chunks.join('\n'), 'utf-8')
   ok(`审计报告已保存：${reportFile}`)
 
-  // 收尾：审计脚本各自起 headless Chrome（端口 9226/9227/9228/9230/9231/9232），
+  // 收尾：审计脚本各自起 headless Chrome（端口 9226/9227/9228/9230/9231/9232/9234），
   // 用 CDP Browser.close 精准关闭；不要 taskkill /IM chrome.exe（会误杀用户浏览器）
-  await closeChromeCdp([9226, 9227, 9228, 9230, 9231, 9232])
+  await closeChromeCdp([9226, 9227, 9228, 9230, 9231, 9232, 9234])
 
   const totalBad = summary.reduce((s, x) => s + x.bad, 0)
   if (totalBad) warn(`审计共发现 ${totalBad} 处 ❌ 标记 —— 请查看报告逐项确认`)

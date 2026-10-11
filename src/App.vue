@@ -566,8 +566,10 @@ function startGame() {
     if (game.phase === 'playing') game.elapsed = Math.round((Date.now() - startedAt) / 1000)
   }, 500)
   game.seq = []
-  viewerParams.value = { ...game.params, nonce: (viewerParams.value.nonce ?? 0) + 1 } as PuzuoParams
+  game.total = 0
+  game.candidates = []
   module.value = 'game'
+  viewerParams.value = { ...game.params, nonce: (viewerParams.value.nonce ?? 0) + 1 } as PuzuoParams
   consoleOpen.value = false
 }
 
@@ -798,10 +800,14 @@ onMounted(() => {
 const viewerParams = ref<PuzuoParams & { nonce?: number }>({ ...DEFAULT_PARAMS })
 // 学堂/工坊各自维护参数；viewer 需要的对象随模块切换。
 // 工坊把 grade 写进 nonce：材等变化也要触发重建（缩放模型）。
+// ⚠️ 必须有 game 分支：否则从别的展区切回拼装挑战时 viewerParams 仍是上一个展区的铺作，
+//    Viewer3D 会把这个「串味」的 sequence 回传给玩法层，导致关卡件数与候选盘全错。
 watchEffect(() => {
   if (module.value === 'school') viewerParams.value = { ...schoolParams, nonce: 0 }
   else if (module.value === 'workshop') viewerParams.value = { ...wsParams, nonce: grade.value }
   else if (module.value === 'quake') viewerParams.value = { ...DEFAULT_PARAMS, nonce: 0 }
+  else if (module.value === 'game') viewerParams.value = { ...game.params }
+  // joints / palace 不使用 viewerParams
 })
 function switchModule(id: StudioModule) {
   if (id === module.value) return
