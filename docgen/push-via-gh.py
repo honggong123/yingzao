@@ -81,10 +81,16 @@ files = [f.strip() for f in files if f.strip()]
 print(f"待上传文件: {len(files)} 个")
 
 # 3) 上传 blobs（大文件写临时 JSON 再 --input）
+#    注意：必须用 `git cat-file blob HEAD:<path>` 取 **git 规范化后** 的内容，
+#    不能直接读工作区文件 —— core.autocrlf=true 时工作区是 CRLF、仓库内是 LF，
+#    直接上传原始字节会导致 GitHub 与本地/Gitee 的 blob sha 不一致。
 tree_items = []
 for i, path in enumerate(files, 1):
-    with open(path, "rb") as f:
-        content = base64.b64encode(f.read()).decode()
+    blob_bytes = subprocess.run(
+        ["git", "cat-file", "blob", f"HEAD:{path}"],
+        capture_output=True, check=True,
+    ).stdout
+    content = base64.b64encode(blob_bytes).decode()
     payload = {"content": content, "encoding": "base64"}
     payload_file = os.path.join(TMP, f"gh-blob-{i}.json")
     with open(payload_file, "w") as f:
