@@ -85,6 +85,29 @@ function httpGet(url, timeoutMs = 5000) {
   })
 }
 
+// 通过 CDP 优雅关闭指定端口的 headless Chrome。
+// 严禁用 `taskkill /IM chrome.exe` —— 那会连同用户自己打开的浏览器一起杀掉。
+async function closeChromeCdp(ports) {
+  for (const port of ports) {
+    try {
+      const r = await httpGet(`http://127.0.0.1:${port}/json/version`, 1500)
+      if (!r || r.status !== 200) continue
+      const wsUrl = JSON.parse(r.body).webSocketDebuggerUrl
+      if (!wsUrl) continue
+      await new Promise((resolve) => {
+        const ws = new WebSocket(wsUrl)
+        const done = () => { try { ws.close() } catch {} ; resolve() }
+        const t = setTimeout(done, 4000)
+        ws.addEventListener('open', () => ws.send(JSON.stringify({ id: 1, method: 'Browser.close' })))
+        ws.addEventListener('message', () => { clearTimeout(t); done() })
+        ws.addEventListener('error', () => { clearTimeout(t); done() })
+        ws.addEventListener('close', () => { clearTimeout(t); done() })
+      })
+      info(`已关闭端口 ${port} 上的 headless Chrome`)
+    } catch { /* 未监听则忽略 */ }
+  }
+}
+
 function run(cmd, { cwd = PROJECT, allowFail = false, inherit = true } = {}) {
   log(`  $ ${cmd}`)
   if (DRY) return { status: 0 }
@@ -252,9 +275,10 @@ async function step3_ppt_shots() {
 
   // 3d. 收尾：关 Chrome、清理临时
   if (!DRY) {
-    // 先杀本进程起的 Chrome，再兜底 taskkill（detached 进程组）
+    // 只关本步骤起的那个 Chrome（按 PID），再用 CDP 兜底；
+    // 不要 taskkill /IM chrome.exe —— 会误杀用户自己的浏览器
     try { if (chromeProc && chromeProc.pid) spawnSync('taskkill', ['/F', '/T', '/PID', String(chromeProc.pid)], { stdio: 'ignore' }) } catch {}
-    spawnSync('taskkill', ['/F', '/IM', 'chrome.exe', '/T'], { shell: true, stdio: 'ignore' })
+    await closeChromeCdp([CDP_PORT])
     // chromeProfile 在系统临时目录，交给系统清理（不主动删，避免触发批量删除守卫）
     rmSync(shotOutDir, { recursive: true, force: true })
   }
@@ -373,8 +397,9 @@ async function step7_audit() {
   writeFileSync(reportFile, chunks.join('\n'), 'utf-8')
   ok(`审计报告已保存：${reportFile}`)
 
-  // 收尾：清掉审计脚本遗留的 headless Chrome
-  try { spawnSync('taskkill', ['/F', '/IM', 'chrome.exe', '/T'], { shell: true, stdio: 'ignore' }) } catch {}
+  // 收尾：审计脚本各自起 headless Chrome（端口 9226/9227/9228/9230/9231），
+  // 用 CDP Browser.close 精准关闭；不要 taskkill /IM chrome.exe（会误杀用户浏览器）
+  await closeChromeCdp([9226, 9227, 9228, 9230, 9231])
 
   const totalBad = summary.reduce((s, x) => s + x.bad, 0)
   if (totalBad) warn(`审计共发现 ${totalBad} 处 ❌ 标记 —— 请查看报告逐项确认`)
