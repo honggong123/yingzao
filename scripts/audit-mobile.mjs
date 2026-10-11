@@ -23,7 +23,7 @@ async function main() {
   await send('Page.enable'); await send('Runtime.enable')
   for (const W of [390, 360, 320]) {
     await send('Emulation.setDeviceMetricsOverride', { width: W, height: 844, deviceScaleFactor: 1, mobile: true })
-    await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('yingzao-session-v1','木作学徒');localStorage.setItem('yingzao-tutorial-v2-done','1');}catch(e){}` })
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('yingzao-session-v1','木作学徒');localStorage.setItem('yingzao-tutorial-v2-done-木作学徒','1');}catch(e){}` })
     await send('Page.navigate', { url: URL })
     for (let i = 0; i < 60; i++) { if (await ev(`(()=>{const c=document.querySelector('canvas');return !!c&&!document.querySelector('.splash')})()`)) break; await sleep(400) }
     await sleep(800)

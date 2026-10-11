@@ -76,6 +76,35 @@ export function logout() {
   localStorage.removeItem(SESSION_KEY)
 }
 
+// ── 新手教程标记（按用户隔离）──
+// 旧版用全局键 `yingzao-tutorial-v2-done`，导致上一账号看过教程后，
+// 新账号登录时不再弹出引导（"遗留到下一个账号"）。改为按用户名分键。
+
+const TUTORIAL_KEY = 'yingzao-tutorial-v2-done'
+
+/** 某用户的教程标记键 */
+export function tutorialKey(user: string): string {
+  return `${TUTORIAL_KEY}-${user}`
+}
+
+/** 该用户是否已看过新手教程（读不到时按"已看过"处理，避免无痕模式下反复弹） */
+export function hasSeenTutorial(user: string): boolean {
+  try {
+    return localStorage.getItem(tutorialKey(user)) === '1'
+  } catch {
+    return true
+  }
+}
+
+/** 标记该用户已看过新手教程 */
+export function markTutorialSeen(user: string) {
+  try {
+    localStorage.setItem(tutorialKey(user), '1')
+  } catch {
+    /* 无痕模式忽略 */
+  }
+}
+
 // ── 拼装成绩存档（按用户） ──
 
 export interface BuildRecord {

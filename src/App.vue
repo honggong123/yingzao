@@ -441,7 +441,7 @@ import { WIKI } from './bofa/kaogu'
 import { CAI_GRADES } from './core/units'
 import { JOINT_LIST } from './bofa/joints'
 import { woodSound, setSoundEnabled, soundEnabled, startAmbient, stopAmbient, ambientOn } from './core/audio'
-import { currentUser, logout, saveRecord, bestFor, loadRecords } from './core/auth'
+import { currentUser, logout, saveRecord, bestFor, loadRecords, hasSeenTutorial } from './core/auth'
 
 const MODULES: { id: StudioModule; label: string; disabled?: boolean }[] = [
   { id: 'school', label: '营造学堂' },
@@ -731,9 +731,51 @@ const encyclopediaOpen = ref(false)
 const encyclopediaInitial = ref('')
 const myRecordList = ref<ReturnType<typeof loadRecords>>([])
 
+/** 退出登录：复位全部展区会话状态，避免上一账号的进度/参数留给下一账号 */
+function resetSessionState() {
+  clearInterval(timer)
+  // 顶栏与视图
+  module.value = 'school'
+  explode.value = 0
+  highlight.value = null
+  selected.value = null
+  navOpen.value = true
+  // 营造学堂
+  Object.assign(schoolParams, { ...DEFAULT_PARAMS, ang: false })
+  schoolAllLabels.value = false
+  // 拼装挑战
+  Object.assign(game, {
+    params: { tiao: 1, zhongGong: false, jiXin: true, shuaTou: true },
+    phase: 'idle', step: 0, wrong: 0, elapsed: 0, total: 0,
+    tutorial: false, guided: false, lastPlaced: '', candidates: [], seq: [], puzuoName: ''
+  })
+  Object.assign(gameDraft, { tiao: 1, zhongGong: false, ang: false, tutorial: false, guided: false })
+  shakeIdx.value = -1
+  // 参数工坊
+  grade.value = 3
+  Object.assign(wsParams, { tiao: 3, zhongGong: true, jiXin: true, shuaTou: true })
+  // 榫卯谱
+  jointId.value = 'yanwei'
+  jointT.value = 1
+  jointMeta.value = null
+  // 斗栱抗震
+  quakeMag.value = 7
+  Object.assign(quakeOpts, { A: magToAmp(7), freqHz: 2, mode: 'dougong', running: false })
+  quakeStats.value = { ratio: 1, peakG: 0, peakR: 0 }
+  // 浮层与视图参数
+  tutorialOpen.value = false
+  consoleOpen.value = false
+  encyclopediaOpen.value = false
+  encyclopediaInitial.value = ''
+  viewerParams.value = { ...DEFAULT_PARAMS }
+  // 环境音
+  if (ambientOn.value) stopAmbient()
+}
+
 function logoutUser() {
   logout()
   myRecordList.value = []
+  resetSessionState()
 }
 
 function openEncyclopedia(key?: string) {
@@ -741,15 +783,11 @@ function openEncyclopedia(key?: string) {
   encyclopediaOpen.value = true
 }
 
-// 登录后：载入成绩；首次使用（v2 教程标记不存在）自动弹新手教程
+// 登录后：载入成绩；该用户首次使用（无其专属教程标记）自动弹新手教程
 watch(user, (u) => {
   if (!u) return
   myRecordList.value = loadRecords(u)
-  try {
-    if (!localStorage.getItem('yingzao-tutorial-v2-done')) tutorialOpen.value = true
-  } catch {
-    /* 无痕模式忽略 */
-  }
+  if (!hasSeenTutorial(u)) tutorialOpen.value = true
 }, { immediate: true })
 
 onMounted(() => {

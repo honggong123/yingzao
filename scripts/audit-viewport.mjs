@@ -53,7 +53,7 @@ async function main() {
   ]
   for (const vp of viewports) {
     await send('Emulation.setDeviceMetricsOverride', { width: vp.w, height: vp.h, deviceScaleFactor: 1, mobile: vp.mobile })
-    await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('yingzao-session-v1','木作学徒');localStorage.setItem('yingzao-tutorial-v2-done','1');}catch(e){}` })
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('yingzao-session-v1','木作学徒');localStorage.setItem('yingzao-tutorial-v2-done-木作学徒','1');}catch(e){}` })
     await send('Page.navigate', { url: URL })
     for (let i = 0; i < 60; i++) { const s = await evalJs(`(()=>{const c=document.querySelector('canvas');return !!c&&!document.querySelector('.splash')})()`); if (s) break; await sleep(400) }
     await sleep(600); await frames(8)

@@ -28,6 +28,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { currentUser, markTutorialSeen } from '../core/auth'
 
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
@@ -203,11 +204,7 @@ onBeforeUnmount(() => {
 })
 
 function close() {
-  try {
-    localStorage.setItem('yingzao-tutorial-v2-done', '1')
-  } catch {
-    /* 无痕模式忽略 */
-  }
+  if (currentUser.value) markTutorialSeen(currentUser.value)
   stepIdx.value = 0
   emit('close')
 }

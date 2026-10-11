@@ -76,7 +76,7 @@ async function main() {
     source:
       `try{` +
       `localStorage.setItem('yingzao-session-v1','${USER}');` +
-      `localStorage.setItem('yingzao-tutorial-v2-done','1');` + // 抑制新手教程浮层
+      `localStorage.setItem('yingzao-tutorial-v2-done-${USER}','1');` + // 抑制新手教程浮层（按用户）
       `}catch(e){}`,
   })
   await send('Page.navigate', { url: URL })

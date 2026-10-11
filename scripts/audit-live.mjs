@@ -101,7 +101,7 @@ async function main() {
   await send('Network.enable')
   await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 720, deviceScaleFactor: 1, mobile: false })
   await send('Page.addScriptToEvaluateOnNewDocument', {
-    source: `try{localStorage.setItem('yingzao-session-v1','${USER}');localStorage.setItem('yingzao-tutorial-v2-done','1');}catch(e){}`,
+    source: `try{localStorage.setItem('yingzao-session-v1','${USER}');localStorage.setItem('yingzao-tutorial-v2-done-${USER}','1');}catch(e){}`,
   })
   await send('Page.navigate', { url: URL })
 
